@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<UserControl
+    x:Class="Planner.Controls.WeeklyLoadChart"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <Grid Background="Transparent">
+        <!-- Floating Micro Tooltip matching Google Stitch HTML -->
+        <Border
+            x:Name="TooltipBadge"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Top"
+            Margin="0,-8,0,0"
+            Background="#202020"
+            CornerRadius="4"
+            Padding="8,2"
+            Visibility="Collapsed"
+            Canvas.ZIndex="10">
+            <TextBlock
+                x:Name="TooltipText"
+                Text="Wednesday (Today): 9 tasks (Peak load)"
+                FontSize="10"
+                FontWeight="Medium"
+                Foreground="White" />
+        </Border>
+
+        <Viewbox Stretch="Uniform" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <Canvas
+                x:Name="ChartCanvas"
+                Width="280"
+                Height="90"
+                Background="Transparent"
+                PointerMoved="OnCanvasPointerMoved"
+                PointerExited="OnCanvasPointerExited">
+
+                <!-- Baseline grid line -->
+                <Line
+                    X1="10"
+                    Y1="70"
+                    X2="270"
+                    Y2="70"
+                    Stroke="{ThemeResource AppSubtleBarBrush}"
+                    StrokeThickness="1" />
+
+                <!-- Bar 0: Monday (x=20, w=22, h=36, y=34) - 6 tasks -->
+                <Rectangle
+                    x:Name="Bar0"
+                    Canvas.Left="20"
+                    Canvas.Top="34"
+                    Width="22"
+                    Height="36"
+                    RadiusX="3"
+                    RadiusY="3"
+                    Fill="{ThemeResource AppSubtleBarBrush}" />
+                <TextBlock
+                    Canvas.Left="26"
+                    Canvas.Top="74"
+                    Text="M"
+                    FontSize="10"
+                    FontWeight="SemiBold"
+                    Foreground="{ThemeResource AppTextSecondaryBrush}" />
+
+                <!-- Bar 1: Tuesday (x=58, w=22, h=48, y=22) - 7 tasks -->
+                <Rectangle
+                    x:Name="Bar1"
+                    Canvas.Left="58"
+                    Canvas.Top="22"
+                    Width="22"
+                    Height="48"
+                    RadiusX="3"
+                    RadiusY="3"
+                    Fill="{ThemeResource AppSubtleBarBrush}" />
+                <TextBlock
+                    Canvas.Left="65"
+                    Canvas.Top="74"
+                    Text="T"
+                    FontSize="10"
+                    FontWeight="SemiBold"
+                    Foreground="{ThemeResource AppTextSecondaryBrush}" />
+
+                <!-- Bar 2: Wednesday (Today) (x=96, w=22, h=62, y=8) - 9 tasks (Peak load) -->
+                <Rectangle
+                    x:Name="Bar2"
+                    Canvas.Left="96"
+                    Canvas.Top="8"
+                    Width="22"
+                    Height="62"
+                    RadiusX="3"
+                    RadiusY="3"
+                    Fill="{ThemeResource AppPrimaryAccentBrush}" />
+                <TextBlock
+                    Canvas.Left="101"
+                    Canvas.Top="74"
+                    Text="W"
+                    FontSize="10"
+                    FontWeight="Bold"
+                    Foreground="{ThemeResource AppPrimaryAccentBrush}" />
+
+                <!-- Bar 3: Thursday (x=134, w=22, h=44, y=26) - 5 tasks -->
+                <Rectangle
+                    x:Name="Bar3"
+                    Canvas.Left="134"
+                    Canvas.Top="26"
+                    Width="22"
+                    Height="44"
+                    RadiusX="3"
+                    RadiusY="3"
+                    Fill="{ThemeResource AppSubtleBarBrush}" />
+                <TextBlock
+                    Canvas.Left="141"
+                    Canvas.Top="74"
+                    Text="T"
+                    FontSize="10"
+                    FontWeight="SemiBold"
+                    Foreground="{ThemeResource AppTextSecondaryBrush}" />
+
+                <!-- Bar 4: Friday (x=172, w=22, h=28, y=42) - 3 tasks -->
+                <Rectangle
+                    x:Name="Bar4"
+                    Canvas.Left="172"
+                    Canvas.Top="42"
+                    Width="22"
+                    Height="28"
+                    RadiusX="3"
+                    RadiusY="3"
+                    Fill="{ThemeResource AppSubtleBarBrush}" />
+                <TextBlock
+                    Canvas.Left="180"
+                    Canvas.Top="74"
+                    Text="F"
+                    FontSize="10"
+                    FontWeight="SemiBold"
+                    Foreground="{ThemeResource AppTextSecondaryBrush}" />
+
+                <!-- Bar 5: Saturday (x=210, w=22, h=16, y=54) - 1 task -->
+                <Rectangle
+                    x:Name="Bar5"
+                    Canvas.Left="210"
+                    Canvas.Top="54"
+                    Width="22"
+                    Height="16"
+                    RadiusX="3"
+                    RadiusY="3"
+                    Fill="{ThemeResource AppSubtleBarBrush}" />
+                <TextBlock
+                    Canvas.Left="218"
+                    Canvas.Top="74"
+                    Text="S"
+                    FontSize="10"
+                    FontWeight="SemiBold"
+                    Foreground="{ThemeResource AppTextSecondaryBrush}" />
+
+                <!-- Bar 6: Sunday (x=248, w=22, h=12, y=58) - 1 task -->
+                <Rectangle
+                    x:Name="Bar6"
+                    Canvas.Left="248"
+                    Canvas.Top="58"
+                    Width="22"
+                    Height="12"
+                    RadiusX="3"
+                    RadiusY="3"
+                    Fill="{ThemeResource AppSubtleBarBrush}" />
+                <TextBlock
+                    Canvas.Left="256"
+                    Canvas.Top="74"
+                    Text="S"
+                    FontSize="10"
+                    FontWeight="SemiBold"
+                    Foreground="{ThemeResource AppTextSecondaryBrush}" />
+
+                <!-- Dynamic Scrubber Vertical Line (Interactive pointer tracking) -->
+                <Line
+                    x:Name="ScrubberLine"
+                    X1="0"
+                    Y1="4"
+                    X2="0"
+                    Y2="70"
+                    Stroke="{ThemeResource AppPrimaryAccentBrush}"
+                    StrokeThickness="1.5"
+                    StrokeDashArray="3,2"
+                    Visibility="Collapsed" />
+            </Canvas>
+        </Viewbox>
+    </Grid>
+</UserControl>
