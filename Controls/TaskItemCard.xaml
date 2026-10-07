@@ -8,12 +8,27 @@
     xmlns:models="using:Planner.Models"
     mc:Ignorable="d">
 
-    <Border
-        Margin="0,0,0,1"
-        Background="{ThemeResource AppCardBackgroundBrush}"
-        BorderBrush="{ThemeResource AppItemBorderBrush}"
-        BorderThickness="0,0,0,1"
-        Padding="12,10">
+    <Grid Margin="0,0,0,1">
+        <!-- Persistent base card background respecting theme -->
+        <Border
+            x:Name="CardBorder"
+            Background="{ThemeResource AppCardBackgroundBrush}"
+            BorderBrush="{ThemeResource AppItemBorderBrush}"
+            BorderThickness="0,0,0,1" />
+
+        <!-- Pure XAML Hover overlay using AppSubtleHoverBrush (Never goes black) -->
+        <Border
+            x:Name="HoverOverlay"
+            Background="{ThemeResource AppSubtleHoverBrush}"
+            Opacity="0"
+            IsHitTestVisible="False" />
+
+        <!-- Interactive content layer -->
+        <Border
+            Padding="12,10"
+            Background="Transparent"
+            PointerEntered="OnCardPointerEntered"
+            PointerExited="OnCardPointerExited">
 
         <Grid RowSpacing="8">
             <Grid.RowDefinitions>
@@ -117,19 +132,21 @@
                         <TextBlock Text="{x:Bind TaskItem.ProjectName, Mode=OneWay}" FontSize="11" FontWeight="Medium" Foreground="{ThemeResource AppTextSecondaryBrush}" />
                     </Border>
 
-                    <!-- Primary Tag Badge -->
-                    <Border
-                        Background="{ThemeResource AppCanvasBackgroundBrush}"
-                        BorderBrush="{ThemeResource AppCardBorderBrush}"
-                        BorderThickness="1"
-                        CornerRadius="4"
-                        Padding="6,2"
-                        Visibility="{x:Bind TaskItem.HasTag, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
-                        <StackPanel Orientation="Horizontal" Spacing="4">
-                            <Ellipse Width="6" Height="6" Fill="{x:Bind TaskItem.TagColorHex, Converter={StaticResource HexToBrushConverter}}" VerticalAlignment="Center" />
-                            <TextBlock Text="{x:Bind TaskItem.PrimaryTag, Mode=OneWay}" FontSize="11" FontWeight="SemiBold" Foreground="{x:Bind TaskItem.TagColorHex, Converter={StaticResource HexToBrushConverter}}" />
-                        </StackPanel>
-                    </Border>
+                    <!-- Primary Tag Badge with Drop Shadow -->
+                    <Grid Visibility="{x:Bind TaskItem.HasTag, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <Border Margin="0,1.5,0,-1" CornerRadius="4" Background="{ThemeResource AppCardShadowBrush}" />
+                        <Border
+                            Background="{ThemeResource AppCanvasBackgroundBrush}"
+                            BorderBrush="{ThemeResource AppCardBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="4"
+                            Padding="6,2">
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <Ellipse Width="6" Height="6" Fill="{x:Bind TaskItem.TagColorHex, Converter={StaticResource HexToBrushConverter}}" VerticalAlignment="Center" />
+                                <TextBlock Text="{x:Bind TaskItem.PrimaryTag, Mode=OneWay}" FontSize="11" FontWeight="SemiBold" Foreground="{x:Bind TaskItem.TagColorHex, Converter={StaticResource HexToBrushConverter}}" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
 
                     <!-- Edit button -->
                     <Button
@@ -193,8 +210,7 @@
                                 <CheckBox
                                     Grid.Column="0"
                                     IsChecked="{x:Bind IsCompleted, Mode=TwoWay}"
-                                    Checked="OnSubTaskCheckChanged"
-                                    Unchecked="OnSubTaskCheckChanged"
+                                    Click="OnSubTaskCheckClicked"
                                     MinWidth="20"
                                     MinHeight="20"
                                     VerticalAlignment="Center" />
@@ -254,4 +270,5 @@
             </StackPanel>
         </Grid>
     </Border>
+    </Grid>
 </UserControl>

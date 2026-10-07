@@ -76,7 +76,7 @@ public sealed partial class TaskItemCard : UserControl
         }
     }
 
-    private void OnSubTaskCheckChanged(object sender, RoutedEventArgs e)
+    private void OnSubTaskCheckClicked(object sender, RoutedEventArgs e)
     {
         if (sender is CheckBox cb && cb.DataContext is PlannerSubTask sub && TaskItem != null)
         {
@@ -133,6 +133,16 @@ public sealed partial class TaskItemCard : UserControl
         return ActualTheme == ElementTheme.Dark
             ? new SolidColorBrush(ColorHelper.FromArgb(255, 0x5A, 0x67, 0x7D))
             : new SolidColorBrush(ColorHelper.FromArgb(255, 0x8A, 0x8A, 0x8A));
+    }
+
+    private void OnCardPointerEntered(object sender, PointerRoutedEventArgs e)
+    {
+        HoverOverlay.Opacity = 1;
+    }
+
+    private void OnCardPointerExited(object sender, PointerRoutedEventArgs e)
+    {
+        HoverOverlay.Opacity = 0;
     }
 
     private double GetTitleOpacity(bool isCompleted) => isCompleted ? 0.55 : 1.0;

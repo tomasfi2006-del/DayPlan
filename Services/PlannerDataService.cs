@@ -18,14 +18,18 @@ public class PlannerDataService : IPlannerDataService
     };
 
     private PlannerDataPackage? _cachedData;
-    private readonly string _storagePath;
+    private readonly ISettingsService _settingsService;
+    private string _storagePath;
 
-    public PlannerDataService()
+    public PlannerDataService(ISettingsService settingsService)
     {
-        string baseDir = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        string appDir = Path.Combine(baseDir, "PlannerSpace");
-        Directory.CreateDirectory(appDir);
-        _storagePath = Path.Combine(appDir, "planner_data.json");
+        _settingsService = settingsService;
+        _storagePath = Path.Combine(_settingsService.CurrentStorageDirectory, "planner_data.json");
+        _settingsService.StorageDirectoryChanged += (s, newDir) =>
+        {
+            _storagePath = Path.Combine(newDir, "planner_data.json");
+            _cachedData = null;
+        };
     }
 
     public async Task<PlannerDataPackage> LoadDataAsync()
@@ -207,7 +211,9 @@ public class PlannerDataService : IPlannerDataService
         string notes,
         string? projectId = null,
         string? projectName = null,
-        string? projectColor = null)
+        string? projectColor = null,
+        IEnumerable<PlannerTag>? tags = null,
+        IEnumerable<PlannerSubTask>? subtasks = null)
     {
         var data = await LoadDataAsync();
         var task = new PlannerTask
@@ -226,6 +232,34 @@ public class PlannerDataService : IPlannerDataService
             ProjectColor = projectColor ?? "#005FB8",
             IsCompleted = false
         };
+
+        if (tags != null)
+        {
+            foreach (var tg in tags)
+            {
+                task.Tags.Add(new PlannerTag { Id = Guid.NewGuid().ToString("N"), Name = tg.Name, ColorHex = tg.ColorHex });
+                var existing = data.Tags.FirstOrDefault(t => t.Name.Equals(tg.Name, StringComparison.OrdinalIgnoreCase));
+                if (existing == null) data.Tags.Add(new PlannerTag { Name = tg.Name, ColorHex = tg.ColorHex });
+            }
+            if (task.Tags.Count > 0 && string.IsNullOrEmpty(task.PrimaryTag))
+            {
+                task.PrimaryTag = task.Tags[0].Name;
+                task.TagColorHex = task.Tags[0].ColorHex;
+            }
+        }
+
+        if (subtasks != null)
+        {
+            foreach (var st in subtasks)
+            {
+                task.Subtasks.Add(new PlannerSubTask
+                {
+                    Id = Guid.NewGuid().ToString("N"),
+                    Title = st.Title,
+                    IsCompleted = st.IsCompleted
+                });
+            }
+        }
 
         if (!string.IsNullOrEmpty(projectId))
         {
@@ -268,7 +302,9 @@ public class PlannerDataService : IPlannerDataService
         string notes,
         string? projectId,
         string? projectName,
-        string? projectColor)
+        string? projectColor,
+        IEnumerable<PlannerTag>? tags = null,
+        IEnumerable<PlannerSubTask>? subtasks = null)
     {
         var data = await LoadDataAsync();
         var task = data.Tasks.FirstOrDefault(t => t.Id == taskId);
@@ -287,6 +323,36 @@ public class PlannerDataService : IPlannerDataService
         task.ProjectId = projectId ?? string.Empty;
         task.ProjectName = projectName ?? string.Empty;
         task.ProjectColor = projectColor ?? "#005FB8";
+
+        if (tags != null)
+        {
+            task.Tags.Clear();
+            foreach (var tg in tags)
+            {
+                task.Tags.Add(new PlannerTag { Id = Guid.NewGuid().ToString("N"), Name = tg.Name, ColorHex = tg.ColorHex });
+                var existing = data.Tags.FirstOrDefault(t => t.Name.Equals(tg.Name, StringComparison.OrdinalIgnoreCase));
+                if (existing == null) data.Tags.Add(new PlannerTag { Name = tg.Name, ColorHex = tg.ColorHex });
+            }
+            if (task.Tags.Count > 0)
+            {
+                task.PrimaryTag = task.Tags[0].Name;
+                task.TagColorHex = task.Tags[0].ColorHex;
+            }
+        }
+
+        if (subtasks != null)
+        {
+            task.Subtasks.Clear();
+            foreach (var st in subtasks)
+            {
+                task.Subtasks.Add(new PlannerSubTask
+                {
+                    Id = Guid.NewGuid().ToString("N"),
+                    Title = st.Title,
+                    IsCompleted = st.IsCompleted
+                });
+            }
+        }
 
         if (oldProjectId != task.ProjectId)
         {
@@ -388,6 +454,69 @@ public class PlannerDataService : IPlannerDataService
         await SaveDataAsync(data);
     }
 
+    public async Task AddAreaAsync(string areaName)
+    {
+        if (string.IsNullOrWhiteSpace(areaName)) return;
+        var data = await LoadDataAsync();
+        if (data.Areas == null) data.Areas = new List<string> { "Work", "Personal" };
+        string trimmed = areaName.Trim();
+        if (!data.Areas.Any(a => a.Equals(trimmed, StringComparison.OrdinalIgnoreCase)))
+        {
+            data.Areas.Add(trimmed);
+            await SaveDataAsync(data);
+        }
+    }
+
+    public async Task DeleteAreaAsync(string areaName)
+    {
+        if (string.IsNullOrWhiteSpace(areaName)) return;
+        var data = await LoadDataAsync();
+        if (data.Areas == null) return;
+        string trimmed = areaName.Trim();
+        var match = data.Areas.FirstOrDefault(a => a.Equals(trimmed, StringComparison.OrdinalIgnoreCase));
+        if (match != null)
+        {
+            data.Areas.Remove(match);
+            var projsToRemove = data.Projects.Where(p => p.Area.Equals(trimmed, StringComparison.OrdinalIgnoreCase)).ToList();
+            foreach (var p in projsToRemove)
+            {
+                data.Projects.Remove(p);
+                foreach (var task in data.Tasks.Where(t => t.ProjectId == p.Id))
+                {
+                    task.ProjectId = string.Empty;
+                    task.ProjectName = string.Empty;
+                }
+            }
+            await SaveDataAsync(data);
+        }
+    }
+
+    public async Task DeleteTagAsync(string tagName)
+    {
+        if (string.IsNullOrWhiteSpace(tagName)) return;
+        var data = await LoadDataAsync();
+        string trimmed = tagName.Trim();
+        var match = data.Tags.FirstOrDefault(t => t.Name.Equals(trimmed, StringComparison.OrdinalIgnoreCase));
+        if (match != null)
+        {
+            data.Tags.Remove(match);
+        }
+        foreach (var task in data.Tasks)
+        {
+            var taskTagMatch = task.Tags.FirstOrDefault(t => t.Name.Equals(trimmed, StringComparison.OrdinalIgnoreCase));
+            if (taskTagMatch != null)
+            {
+                task.Tags.Remove(taskTagMatch);
+            }
+            if (task.PrimaryTag.Equals(trimmed, StringComparison.OrdinalIgnoreCase))
+            {
+                task.PrimaryTag = task.Tags.Count > 0 ? task.Tags[0].Name : string.Empty;
+                task.TagColorHex = task.Tags.Count > 0 ? task.Tags[0].ColorHex : "#005FB8";
+            }
+        }
+        await SaveDataAsync(data);
+    }
+
     private static PlannerDataPackage SeedInitialData()
     {
         var projects = new List<PlannerProject>();
@@ -397,10 +526,7 @@ public class PlannerDataService : IPlannerDataService
         {
             new() { Name = "#Work", ColorHex = "#005FB8" },
             new() { Name = "#Personal", ColorHex = "#107C41" },
-            new() { Name = "#Design", ColorHex = "#744DA9" },
-            new() { Name = "#Dev", ColorHex = "#CA5010" },
-            new() { Name = "#Strategy", ColorHex = "#D13438" },
-            new() { Name = "#Deep Work", ColorHex = "#038387" }
+            new() { Name = "#Focus", ColorHex = "#0078D4" }
         };
 
         var horizonEvents = new List<CalendarHorizonEvent>();
@@ -420,6 +546,7 @@ public class PlannerDataService : IPlannerDataService
         {
             Tasks = tasks,
             Projects = projects,
+            Areas = new List<string> { "Work", "Personal" },
             Tags = tags,
             HorizonEvents = horizonEvents,
             WeeklyLoads = weeklyLoads

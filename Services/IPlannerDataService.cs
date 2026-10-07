@@ -9,6 +9,7 @@ public class PlannerDataPackage
 {
     public List<PlannerTask> Tasks { get; set; } = new();
     public List<PlannerProject> Projects { get; set; } = new();
+    public List<string> Areas { get; set; } = new() { "Work", "Personal" };
     public List<PlannerTag> Tags { get; set; } = new();
     public List<CalendarHorizonEvent> HorizonEvents { get; set; } = new();
     public List<WeeklyDayLoad> WeeklyLoads { get; set; } = new();
@@ -30,7 +31,9 @@ public interface IPlannerDataService
         string notes,
         string? projectId = null,
         string? projectName = null,
-        string? projectColor = null);
+        string? projectColor = null,
+        IEnumerable<PlannerTag>? tags = null,
+        IEnumerable<PlannerSubTask>? subtasks = null);
     Task<PlannerTask?> UpdateTaskAsync(
         string taskId,
         string title,
@@ -43,7 +46,9 @@ public interface IPlannerDataService
         string notes,
         string? projectId,
         string? projectName,
-        string? projectColor);
+        string? projectColor,
+        IEnumerable<PlannerTag>? tags = null,
+        IEnumerable<PlannerSubTask>? subtasks = null);
     Task ToggleTaskCompletionAsync(string taskId);
     Task DeleteTaskAsync(string taskId);
     Task AddSubTaskAsync(string taskId, string subTaskTitle);
@@ -52,5 +57,8 @@ public interface IPlannerDataService
     Task<PlannerProject> AddProjectAsync(string name, string area, string colorHex);
     Task DeleteProjectAsync(string projectId);
     Task RenameProjectAsync(string projectId, string newName);
+    Task AddAreaAsync(string areaName);
+    Task DeleteAreaAsync(string areaName);
     Task AddOrUpdateTagAsync(string name, string colorHex);
+    Task DeleteTagAsync(string tagName);
 }

@@ -11,6 +11,255 @@
     Loaded="OnPageLoaded"
     mc:Ignorable="d">
 
+    <Page.Resources>
+        <Style x:Key="SidebarNavButtonStyle" TargetType="Button">
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Padding" Value="8,6" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid x:Name="RootGrid" Background="{TemplateBinding Background}" CornerRadius="{TemplateBinding CornerRadius}">
+                            <VisualStateManager.VisualStateGroups>
+                                <VisualStateGroup x:Name="CommonStates">
+                                    <VisualState x:Name="Normal" />
+                                    <VisualState x:Name="PointerOver">
+                                        <VisualState.Setters>
+                                            <Setter Target="HoverOverlay.Opacity" Value="1" />
+                                        </VisualState.Setters>
+                                    </VisualState>
+                                    <VisualState x:Name="Pressed">
+                                        <VisualState.Setters>
+                                            <Setter Target="HoverOverlay.Opacity" Value="0.6" />
+                                        </VisualState.Setters>
+                                    </VisualState>
+                                    <VisualState x:Name="Disabled">
+                                        <VisualState.Setters>
+                                            <Setter Target="RootGrid.Opacity" Value="0.5" />
+                                        </VisualState.Setters>
+                                    </VisualState>
+                                </VisualStateGroup>
+                            </VisualStateManager.VisualStateGroups>
+                            <Border x:Name="HoverOverlay" Background="{ThemeResource AppSubtleHoverBrush}" CornerRadius="{TemplateBinding CornerRadius}" Opacity="0" />
+                            <ContentPresenter x:Name="ContentPresenter"
+                                Padding="{TemplateBinding Padding}"
+                                HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Tag Filter Button Style with permanent drop shadow & rich darken hover (NEVER washes out white) -->
+        <Style x:Key="TagFilterButtonStyle" TargetType="Button">
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="9,3" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid x:Name="RootGrid" Margin="0,1,0,3">
+                            <VisualStateManager.VisualStateGroups>
+                                <VisualStateGroup x:Name="CommonStates">
+                                    <VisualState x:Name="Normal" />
+                                    <VisualState x:Name="PointerOver">
+                                        <VisualState.Setters>
+                                            <Setter Target="HoverDarkenOverlay.Opacity" Value="0.22" />
+                                            <Setter Target="TagShadow.Opacity" Value="1" />
+                                            <Setter Target="TagShadow.Margin" Value="0,3,0,-2.5" />
+                                        </VisualState.Setters>
+                                    </VisualState>
+                                    <VisualState x:Name="Pressed">
+                                        <VisualState.Setters>
+                                            <Setter Target="HoverDarkenOverlay.Opacity" Value="0.38" />
+                                            <Setter Target="TagShadow.Opacity" Value="0.35" />
+                                            <Setter Target="TagShadow.Margin" Value="0,1,0,0" />
+                                        </VisualState.Setters>
+                                    </VisualState>
+                                    <VisualState x:Name="Disabled">
+                                        <VisualState.Setters>
+                                            <Setter Target="PillSurface.Opacity" Value="0.5" />
+                                        </VisualState.Setters>
+                                    </VisualState>
+                                </VisualStateGroup>
+                            </VisualStateManager.VisualStateGroups>
+
+                            <!-- Drop Shadow Underlay -->
+                            <Border
+                                x:Name="TagShadow"
+                                Margin="0,2,0,-1.5"
+                                CornerRadius="{TemplateBinding CornerRadius}"
+                                Background="{ThemeResource AppTagShadowBrush}"
+                                Opacity="0.75" />
+
+                            <!-- Main Pill Surface -->
+                            <Border
+                                x:Name="PillSurface"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="{TemplateBinding CornerRadius}">
+                                <Grid>
+                                    <!-- Inset border highlight for depth -->
+                                    <Border
+                                        CornerRadius="{TemplateBinding CornerRadius}"
+                                        BorderBrush="#25FFFFFF"
+                                        BorderThickness="1" />
+
+                                    <!-- Hover Lighten Overlay (White tint works on any vivid tag colour in both themes) -->
+                                    <Border
+                                        x:Name="HoverDarkenOverlay"
+                                        Background="White"
+                                        CornerRadius="{TemplateBinding CornerRadius}"
+                                        Opacity="0" />
+
+                                    <!-- Crisp White Foreground -->
+                                    <ContentPresenter
+                                        x:Name="ContentPresenter"
+                                        Content="{TemplateBinding Content}"
+                                        ContentTemplate="{TemplateBinding ContentTemplate}"
+                                        Padding="{TemplateBinding Padding}"
+                                        HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                        VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                        Foreground="White"
+                                        FontSize="{TemplateBinding FontSize}"
+                                        FontWeight="{TemplateBinding FontWeight}" />
+                                </Grid>
+                            </Border>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- All Filter Button Style with drop shadow & safe hover (preserves selection & text contrast) -->
+        <Style x:Key="AllFilterButtonStyle" TargetType="Button">
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="12,3" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid x:Name="RootGrid" Margin="0,1,0,3">
+                            <VisualStateManager.VisualStateGroups>
+                                <VisualStateGroup x:Name="CommonStates">
+                                    <VisualState x:Name="Normal" />
+                                    <VisualState x:Name="PointerOver">
+                                        <VisualState.Setters>
+                                            <Setter Target="HoverOverlay.Opacity" Value="1" />
+                                            <Setter Target="AllShadow.Opacity" Value="0.95" />
+                                            <Setter Target="AllShadow.Margin" Value="0,3,0,-2.5" />
+                                        </VisualState.Setters>
+                                    </VisualState>
+                                    <VisualState x:Name="Pressed">
+                                        <VisualState.Setters>
+                                            <Setter Target="HoverOverlay.Opacity" Value="0.6" />
+                                            <Setter Target="AllShadow.Opacity" Value="0.35" />
+                                            <Setter Target="AllShadow.Margin" Value="0,1,0,0" />
+                                        </VisualState.Setters>
+                                    </VisualState>
+                                    <VisualState x:Name="Disabled">
+                                        <VisualState.Setters>
+                                            <Setter Target="PillSurface.Opacity" Value="0.5" />
+                                        </VisualState.Setters>
+                                    </VisualState>
+                                </VisualStateGroup>
+                            </VisualStateManager.VisualStateGroups>
+
+                            <!-- Drop Shadow Underlay -->
+                            <Border
+                                x:Name="AllShadow"
+                                Margin="0,2,0,-1.5"
+                                CornerRadius="{TemplateBinding CornerRadius}"
+                                Background="{ThemeResource AppCardShadowBrush}"
+                                Opacity="0.65" />
+
+                            <!-- Main Pill Surface -->
+                            <Border
+                                x:Name="PillSurface"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="{TemplateBinding CornerRadius}">
+                                <Grid>
+                                    <Border
+                                        CornerRadius="{TemplateBinding CornerRadius}"
+                                        BorderBrush="{ThemeResource AppCardBorderBrush}"
+                                        BorderThickness="1" />
+
+                                    <Border
+                                        x:Name="HoverOverlay"
+                                        Background="{ThemeResource AppSubtleHoverBrush}"
+                                        CornerRadius="{TemplateBinding CornerRadius}"
+                                        Opacity="0" />
+
+                                    <ContentPresenter
+                                        x:Name="ContentPresenter"
+                                        Content="{TemplateBinding Content}"
+                                        ContentTemplate="{TemplateBinding ContentTemplate}"
+                                        Padding="{TemplateBinding Padding}"
+                                        HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                        VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                        Foreground="{TemplateBinding Foreground}"
+                                        FontSize="{TemplateBinding FontSize}"
+                                        FontWeight="{TemplateBinding FontWeight}" />
+                                </Grid>
+                            </Border>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Add Filter Button Style -->
+        <Style x:Key="AddFilterPillButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="24" />
+            <Setter Property="Height" Value="24" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid x:Name="RootGrid" Background="{TemplateBinding Background}" CornerRadius="{TemplateBinding CornerRadius}">
+                            <VisualStateManager.VisualStateGroups>
+                                <VisualStateGroup x:Name="CommonStates">
+                                    <VisualState x:Name="Normal" />
+                                    <VisualState x:Name="PointerOver">
+                                        <VisualState.Setters>
+                                            <Setter Target="HoverOverlay.Opacity" Value="1" />
+                                        </VisualState.Setters>
+                                    </VisualState>
+                                    <VisualState x:Name="Pressed">
+                                        <VisualState.Setters>
+                                            <Setter Target="HoverOverlay.Opacity" Value="0.6" />
+                                        </VisualState.Setters>
+                                    </VisualState>
+                                    <VisualState x:Name="Disabled">
+                                        <VisualState.Setters>
+                                            <Setter Target="RootGrid.Opacity" Value="0.5" />
+                                        </VisualState.Setters>
+                                    </VisualState>
+                                </VisualStateGroup>
+                            </VisualStateManager.VisualStateGroups>
+                            <Border x:Name="HoverOverlay" Background="{ThemeResource AppSubtleHoverBrush}" CornerRadius="{TemplateBinding CornerRadius}" Opacity="0" />
+                            <ContentPresenter x:Name="ContentPresenter"
+                                Padding="{TemplateBinding Padding}"
+                                HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Page.Resources>
+
     <Page.KeyboardAccelerators>
         <KeyboardAccelerator Key="N" Modifiers="Control" Invoked="OnCtrlNInvoked" />
         <KeyboardAccelerator Key="F" Modifiers="Control" Invoked="OnCtrlFInvoked" />
@@ -90,11 +339,7 @@
 
                             <!-- Inbox -->
                             <Button
-                                HorizontalAlignment="Stretch"
-                                HorizontalContentAlignment="Stretch"
-                                Padding="8,6"
-                                CornerRadius="6"
-                                BorderThickness="0"
+                                Style="{StaticResource SidebarNavButtonStyle}"
                                 Background="{x:Bind GetNavBackground(ViewModel.SelectedNavCategory, 'Inbox'), Mode=OneWay}"
                                 Click="OnNavInboxClicked">
                                 <Grid>
@@ -113,11 +358,7 @@
 
                             <!-- Today (Active indicator) -->
                             <Button
-                                HorizontalAlignment="Stretch"
-                                HorizontalContentAlignment="Stretch"
-                                Padding="8,6"
-                                CornerRadius="6"
-                                BorderThickness="0"
+                                Style="{StaticResource SidebarNavButtonStyle}"
                                 Background="{x:Bind GetNavBackground(ViewModel.SelectedNavCategory, 'Today'), Mode=OneWay}"
                                 Click="OnNavTodayClicked">
                                 <Grid>
@@ -136,11 +377,7 @@
 
                             <!-- Upcoming -->
                             <Button
-                                HorizontalAlignment="Stretch"
-                                HorizontalContentAlignment="Stretch"
-                                Padding="8,6"
-                                CornerRadius="6"
-                                BorderThickness="0"
+                                Style="{StaticResource SidebarNavButtonStyle}"
                                 Background="{x:Bind GetNavBackground(ViewModel.SelectedNavCategory, 'Upcoming'), Mode=OneWay}"
                                 Click="OnNavUpcomingClicked">
                                 <Grid>
@@ -155,11 +392,7 @@
 
                             <!-- Anytime -->
                             <Button
-                                HorizontalAlignment="Stretch"
-                                HorizontalContentAlignment="Stretch"
-                                Padding="8,6"
-                                CornerRadius="6"
-                                BorderThickness="0"
+                                Style="{StaticResource SidebarNavButtonStyle}"
                                 Background="{x:Bind GetNavBackground(ViewModel.SelectedNavCategory, 'Anytime'), Mode=OneWay}"
                                 Click="OnNavAnytimeClicked">
                                 <Grid>
@@ -174,11 +407,7 @@
 
                             <!-- Someday -->
                             <Button
-                                HorizontalAlignment="Stretch"
-                                HorizontalContentAlignment="Stretch"
-                                Padding="8,6"
-                                CornerRadius="6"
-                                BorderThickness="0"
+                                Style="{StaticResource SidebarNavButtonStyle}"
                                 Background="{x:Bind GetNavBackground(ViewModel.SelectedNavCategory, 'Someday'), Mode=OneWay}"
                                 Click="OnNavSomedayClicked">
                                 <Grid>
@@ -193,11 +422,7 @@
 
                             <!-- Logbook -->
                             <Button
-                                HorizontalAlignment="Stretch"
-                                HorizontalContentAlignment="Stretch"
-                                Padding="8,6"
-                                CornerRadius="6"
-                                BorderThickness="0"
+                                Style="{StaticResource SidebarNavButtonStyle}"
                                 Background="{x:Bind GetNavBackground(ViewModel.SelectedNavCategory, 'Logbook'), Mode=OneWay}"
                                 Click="OnNavLogbookClicked">
                                 <Grid>
@@ -223,163 +448,198 @@
                                     Text="AREAS &amp; PROJECTS"
                                     FontSize="10"
                                     FontWeight="Bold"
-                                    Foreground="{ThemeResource AppTextSecondaryBrush}" />
+                                    Foreground="{ThemeResource AppTextSecondaryBrush}"
+                                    VerticalAlignment="Center" />
+                                <!-- [+] Button to Create New Area -->
                                 <Button
                                     Grid.Column="1"
-                                    Width="20"
-                                    Height="20"
+                                    Width="22"
+                                    Height="22"
                                     Padding="0"
                                     Background="Transparent"
                                     BorderThickness="0"
-                                    Command="{x:Bind ViewModel.OpenNewListDialogCommand}"
-                                    ToolTipService.ToolTip="Add Project">
+                                    ToolTipService.ToolTip="Create new Area">
+                                    <Button.Flyout>
+                                        <Flyout x:Name="NewAreaFlyout">
+                                            <StackPanel Spacing="8" Width="200">
+                                                <TextBlock Text="New Area" FontWeight="SemiBold" FontSize="12" />
+                                                <TextBlock Text="Presets:" FontSize="10" Foreground="{ThemeResource AppTextSecondaryBrush}" />
+                                                <StackPanel Spacing="4">
+                                                    <Button Content="Work" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="8,4" FontSize="11" Click="OnAreaPresetClicked" Tag="Work" />
+                                                    <Button Content="Personal" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="8,4" FontSize="11" Click="OnAreaPresetClicked" Tag="Personal" />
+                                                    <Button Content="Study" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="8,4" FontSize="11" Click="OnAreaPresetClicked" Tag="Study" />
+                                                    <Button Content="Finance" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="8,4" FontSize="11" Click="OnAreaPresetClicked" Tag="Finance" />
+                                                    <Button Content="Side Projects" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="8,4" FontSize="11" Click="OnAreaPresetClicked" Tag="Side Projects" />
+                                                </StackPanel>
+                                                <TextBlock Text="Or custom name:" FontSize="10" Foreground="{ThemeResource AppTextSecondaryBrush}" />
+                                                <TextBox x:Name="CustomAreaNameBox" PlaceholderText="Area name..." FontSize="12" KeyDown="OnCustomAreaKeyDown" />
+                                                <Button Content="Create Area" Style="{StaticResource AccentButtonStyle}" HorizontalAlignment="Stretch" Click="OnCreateCustomAreaClicked" />
+                                            </StackPanel>
+                                        </Flyout>
+                                    </Button.Flyout>
                                     <FontIcon Glyph="&#xE710;" FontSize="11" Foreground="{ThemeResource AppTextSecondaryBrush}" />
                                 </Button>
                             </Grid>
 
-                            <!-- Empty state when no projects created yet -->
+                            <!-- Dynamic Area Groups -->
+                            <ItemsControl ItemsSource="{x:Bind ViewModel.AreaGroups, Mode=OneWay}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="models:ProjectAreaGroup">
+                                        <StackPanel Spacing="2" Margin="0,2,0,8">
+                                            <!-- Area Header Row with [+] to add a list in this area and [...] for options -->
+                                            <Grid Margin="8,4,4,2">
+                                                <Grid.ContextFlyout>
+                                                    <MenuFlyout>
+                                                        <MenuFlyoutItem Text="Delete Area" Tag="{x:Bind AreaName}" Click="OnDeleteAreaContextClicked">
+                                                            <MenuFlyoutItem.Icon>
+                                                                <FontIcon Glyph="&#xE74D;" Foreground="#E81123" />
+                                                            </MenuFlyoutItem.Icon>
+                                                        </MenuFlyoutItem>
+                                                    </MenuFlyout>
+                                                </Grid.ContextFlyout>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                                    <FontIcon Glyph="&#xED43;" FontSize="11" Foreground="{ThemeResource AppTextSecondaryBrush}" />
+                                                    <TextBlock Text="{x:Bind AreaName}" FontSize="11" FontWeight="SemiBold" Foreground="{ThemeResource AppTextPrimaryBrush}" VerticalAlignment="Center" />
+                                                </StackPanel>
+
+                                                <!-- Actions: [+] Add List, [...] Options -->
+                                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2">
+                                                    <!-- [+] button to add a List inside this Area -->
+                                                    <Button
+                                                        Width="20"
+                                                        Height="20"
+                                                        Padding="0"
+                                                        Background="Transparent"
+                                                        BorderThickness="0"
+                                                        ToolTipService.ToolTip="Add list to this Area">
+                                                        <Button.Flyout>
+                                                            <Flyout>
+                                                                <StackPanel Spacing="8" Width="200" Tag="{x:Bind AreaName}" DataContext="{x:Bind}">
+                                                                    <TextBlock Text="New List" FontWeight="SemiBold" FontSize="12" />
+                                                                    <TextBlock Text="Presets:" FontSize="10" Foreground="{ThemeResource AppTextSecondaryBrush}" />
+                                                                    <StackPanel Spacing="4">
+                                                                        <Button Content="Sprint" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="8,4" FontSize="11" Click="OnListPresetClicked" Tag="Sprint" />
+                                                                        <Button Content="Roadmap" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="8,4" FontSize="11" Click="OnListPresetClicked" Tag="Roadmap" />
+                                                                        <Button Content="Backlog" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="8,4" FontSize="11" Click="OnListPresetClicked" Tag="Backlog" />
+                                                                        <Button Content="Ideas" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="8,4" FontSize="11" Click="OnListPresetClicked" Tag="Ideas" />
+                                                                        <Button Content="Admin" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="8,4" FontSize="11" Click="OnListPresetClicked" Tag="Admin" />
+                                                                    </StackPanel>
+                                                                    <TextBlock Text="Or custom name:" FontSize="10" Foreground="{ThemeResource AppTextSecondaryBrush}" />
+                                                                    <TextBox PlaceholderText="List name..." FontSize="12" KeyDown="OnCustomListKeyDown" />
+                                                                    <Button Content="Create List" Style="{StaticResource AccentButtonStyle}" HorizontalAlignment="Stretch" Click="OnCreateCustomListClicked" />
+                                                                </StackPanel>
+                                                            </Flyout>
+                                                        </Button.Flyout>
+                                                        <FontIcon Glyph="&#xE710;" FontSize="10" Foreground="{ThemeResource AppTextSecondaryBrush}" />
+                                                    </Button>
+
+                                                    <!-- [...] button for Area Options (Delete Area) -->
+                                                    <Button
+                                                        Width="20"
+                                                        Height="20"
+                                                        Padding="0"
+                                                        Background="Transparent"
+                                                        BorderThickness="0"
+                                                        ToolTipService.ToolTip="Area options">
+                                                        <Button.Flyout>
+                                                            <MenuFlyout>
+                                                                <MenuFlyoutItem Text="Delete Area" Tag="{x:Bind AreaName}" Click="OnDeleteAreaContextClicked">
+                                                                    <MenuFlyoutItem.Icon>
+                                                                        <FontIcon Glyph="&#xE74D;" Foreground="#E81123" />
+                                                                    </MenuFlyoutItem.Icon>
+                                                                </MenuFlyoutItem>
+                                                            </MenuFlyout>
+                                                        </Button.Flyout>
+                                                        <FontIcon Glyph="&#xE712;" FontSize="10" Foreground="{ThemeResource AppTextSecondaryBrush}" />
+                                                    </Button>
+                                                </StackPanel>
+                                            </Grid>
+
+                                            <!-- Projects / Lists in this Area -->
+                                            <ItemsControl ItemsSource="{x:Bind Projects}" Margin="12,0,0,2">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate x:DataType="models:PlannerProject">
+                                                        <Button
+                                                            HorizontalAlignment="Stretch"
+                                                            HorizontalContentAlignment="Stretch"
+                                                            Padding="6,4"
+                                                            CornerRadius="4"
+                                                            BorderThickness="0"
+                                                            Background="Transparent"
+                                                            Click="OnProjectItemClicked">
+                                                            <Button.ContextFlyout>
+                                                                <MenuFlyout>
+                                                                    <MenuFlyoutItem Text="Delete List" Click="OnDeleteProjectContextClicked">
+                                                                        <MenuFlyoutItem.Icon>
+                                                                            <FontIcon Glyph="&#xE74D;" />
+                                                                        </MenuFlyoutItem.Icon>
+                                                                    </MenuFlyoutItem>
+                                                                </MenuFlyout>
+                                                            </Button.ContextFlyout>
+                                                            <Grid ColumnSpacing="8">
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="Auto" />
+                                                                    <ColumnDefinition Width="*" />
+                                                                </Grid.ColumnDefinitions>
+                                                                <Ellipse
+                                                                    Grid.Column="0"
+                                                                    Width="7"
+                                                                    Height="7"
+                                                                    Fill="{x:Bind ColorHex, Converter={StaticResource HexToBrushConverter}}"
+                                                                    VerticalAlignment="Center" />
+                                                                <TextBlock
+                                                                    Grid.Column="1"
+                                                                    Text="{x:Bind Name}"
+                                                                    FontSize="12"
+                                                                    Foreground="{ThemeResource AppTextPrimaryBrush}"
+                                                                    TextTrimming="CharacterEllipsis"
+                                                                    VerticalAlignment="Center" />
+                                                            </Grid>
+                                                        </Button>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <!-- Empty Area Prompt -->
                             <TextBlock
-                                Text="No projects yet"
+                                Text="Non Existent"
                                 FontSize="11"
                                 Foreground="{ThemeResource AppTextSecondaryBrush}"
-                                Margin="10,4,0,4"
-                                Visibility="{x:Bind ViewModel.HasNoProjects, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
-
-                            <!-- Work Area Header & List -->
-                            <StackPanel Visibility="{x:Bind ViewModel.HasWorkProjects, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" Spacing="2">
-                                <StackPanel Orientation="Horizontal" Spacing="6" Margin="8,4,0,2">
-                                    <FontIcon Glyph="&#xED43;" FontSize="12" Foreground="{ThemeResource AppTextSecondaryBrush}" />
-                                    <TextBlock Text="Work" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource AppTextPrimaryBrush}" />
-                                </StackPanel>
-
-                                <ItemsControl ItemsSource="{x:Bind ViewModel.WorkProjects, Mode=OneWay}" Margin="12,0,0,4">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate x:DataType="models:PlannerProject">
-                                            <Button
-                                                HorizontalAlignment="Stretch"
-                                                HorizontalContentAlignment="Stretch"
-                                                Padding="6,4"
-                                                CornerRadius="4"
-                                                BorderThickness="0"
-                                                Background="Transparent"
-                                                Click="OnProjectItemClicked">
-                                                <Button.ContextFlyout>
-                                                    <MenuFlyout>
-                                                        <MenuFlyoutItem Text="Delete List" Click="OnDeleteProjectContextClicked">
-                                                            <MenuFlyoutItem.Icon>
-                                                                <FontIcon Glyph="&#xE74D;" />
-                                                            </MenuFlyoutItem.Icon>
-                                                        </MenuFlyoutItem>
-                                                    </MenuFlyout>
-                                                </Button.ContextFlyout>
-                                                <Grid ColumnSpacing="8">
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="Auto" />
-                                                        <ColumnDefinition Width="*" />
-                                                    </Grid.ColumnDefinitions>
-                                                    <Ellipse
-                                                        Grid.Column="0"
-                                                        Width="7"
-                                                        Height="7"
-                                                        Fill="{x:Bind ColorHex, Converter={StaticResource HexToBrushConverter}}"
-                                                        VerticalAlignment="Center" />
-                                                    <TextBlock
-                                                        Grid.Column="1"
-                                                        Text="{x:Bind Name}"
-                                                        FontSize="12"
-                                                        Foreground="{ThemeResource AppTextPrimaryBrush}"
-                                                        TextTrimming="CharacterEllipsis"
-                                                        VerticalAlignment="Center" />
-                                                </Grid>
-                                            </Button>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </StackPanel>
-
-                            <!-- Personal Area Header & List -->
-                            <StackPanel Visibility="{x:Bind ViewModel.HasPersonalProjects, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" Spacing="2">
-                                <StackPanel Orientation="Horizontal" Spacing="6" Margin="8,6,0,2">
-                                    <FontIcon Glyph="&#xED43;" FontSize="12" Foreground="{ThemeResource AppTextSecondaryBrush}" />
-                                    <TextBlock Text="Personal" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource AppTextPrimaryBrush}" />
-                                </StackPanel>
-
-                                <ItemsControl ItemsSource="{x:Bind ViewModel.PersonalProjects, Mode=OneWay}" Margin="12,0,0,4">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate x:DataType="models:PlannerProject">
-                                            <Button
-                                                HorizontalAlignment="Stretch"
-                                                HorizontalContentAlignment="Stretch"
-                                                Padding="6,4"
-                                                CornerRadius="4"
-                                                BorderThickness="0"
-                                                Background="Transparent"
-                                                Click="OnProjectItemClicked">
-                                                <Button.ContextFlyout>
-                                                    <MenuFlyout>
-                                                        <MenuFlyoutItem Text="Delete List" Click="OnDeleteProjectContextClicked">
-                                                            <MenuFlyoutItem.Icon>
-                                                                <FontIcon Glyph="&#xE74D;" />
-                                                            </MenuFlyoutItem.Icon>
-                                                        </MenuFlyoutItem>
-                                                    </MenuFlyout>
-                                                </Button.ContextFlyout>
-                                                <Grid ColumnSpacing="8">
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="Auto" />
-                                                        <ColumnDefinition Width="*" />
-                                                    </Grid.ColumnDefinitions>
-                                                    <Ellipse
-                                                        Grid.Column="0"
-                                                        Width="7"
-                                                        Height="7"
-                                                        Fill="{x:Bind ColorHex, Converter={StaticResource HexToBrushConverter}}"
-                                                        VerticalAlignment="Center" />
-                                                    <TextBlock
-                                                        Grid.Column="1"
-                                                        Text="{x:Bind Name}"
-                                                        FontSize="12"
-                                                        Foreground="{ThemeResource AppTextPrimaryBrush}"
-                                                        TextTrimming="CharacterEllipsis"
-                                                        VerticalAlignment="Center" />
-                                                </Grid>
-                                            </Button>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </StackPanel>
+                                Margin="12,2,0,4"
+                                Visibility="{x:Bind ViewModel.HasAreas, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=inverse}" />
                         </StackPanel>
 
                     </StackPanel>
                 </ScrollViewer>
 
-                <!-- Footer: + New List & Settings Gear -->
+                <!-- Footer: Clean Settings Button -->
                 <Border
                     Grid.Row="2"
                     BorderBrush="{ThemeResource AppCardBorderBrush}"
                     BorderThickness="0,1,0,0"
-                    Padding="10,8">
+                    Padding="12,8">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
 
-                        <!-- + New List Button -->
-                        <Button
+                        <TextBlock
                             Grid.Column="0"
-                            HorizontalAlignment="Stretch"
-                            Padding="8,6"
-                            CornerRadius="4"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            Command="{x:Bind ViewModel.OpenNewListDialogCommand}"
-                            ToolTipService.ToolTip="Create a new list">
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <FontIcon Glyph="&#xE710;" FontSize="13" Foreground="{ThemeResource AppPrimaryAccentBrush}" />
-                                <TextBlock Text="New List" FontSize="12" FontWeight="Medium" Foreground="{ThemeResource AppTextPrimaryBrush}" />
-                            </StackPanel>
-                        </Button>
+                            Text="Planner"
+                            FontSize="11"
+                            FontWeight="SemiBold"
+                            Foreground="{ThemeResource AppTextSecondaryBrush}"
+                            VerticalAlignment="Center"
+                            Margin="4,0,0,0" />
 
                         <!-- Settings Gear Button -->
                         <Button
@@ -403,7 +663,7 @@
         <Grid Grid.Column="1">
             <Grid.RowDefinitions>
                 <!-- CommandBar / Filter Strip -->
-                <RowDefinition Height="48" />
+                <RowDefinition Height="56" />
                 <!-- Dynamic Content Canvas -->
                 <RowDefinition Height="*" />
                 <!-- Bottom Status Bar -->
@@ -416,7 +676,7 @@
                 Background="{ThemeResource AppCardBackgroundBrush}"
                 BorderBrush="{ThemeResource AppCardBorderBrush}"
                 BorderThickness="0,0,0,1"
-                Padding="16,0">
+                Padding="16,8,16,8">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
@@ -439,23 +699,101 @@
                             <FontIcon Glyph="&#xE700;" FontSize="14" Foreground="{ThemeResource AppTextPrimaryBrush}" />
                         </Button>
 
-                        <!-- Segmented Capsule Pill Controls -->
-                        <Border
-                            Background="{ThemeResource AppCanvasBackgroundBrush}"
-                            BorderBrush="{ThemeResource AppCardBorderBrush}"
-                            BorderThickness="1"
-                            CornerRadius="8"
-                            Padding="3"
-                            VerticalAlignment="Center">
-                            <StackPanel Orientation="Horizontal" Spacing="4">
-                                <Button Padding="10,3" FontSize="12" FontWeight="Medium" CornerRadius="6" BorderThickness="0" Background="{x:Bind GetSegmentBackground(ViewModel.SegmentFilter, 'All'), Mode=OneWay}" Foreground="{x:Bind GetSegmentForeground(ViewModel.SegmentFilter, 'All'), Mode=OneWay}" Click="OnFilterAllClicked" Content="All" />
-                                <Button Padding="10,3" FontSize="12" FontWeight="Medium" CornerRadius="6" BorderThickness="0" Background="{x:Bind GetSegmentBackground(ViewModel.SegmentFilter, 'Work'), Mode=OneWay}" Foreground="{x:Bind GetSegmentForeground(ViewModel.SegmentFilter, 'Work'), Mode=OneWay}" Click="OnFilterWorkClicked" Content="Work" />
-                                <Button Padding="10,3" FontSize="12" FontWeight="Medium" CornerRadius="6" BorderThickness="0" Background="{x:Bind GetSegmentBackground(ViewModel.SegmentFilter, 'Personal'), Mode=OneWay}" Foreground="{x:Bind GetSegmentForeground(ViewModel.SegmentFilter, 'Personal'), Mode=OneWay}" Click="OnFilterPersonalClicked" Content="Personal" />
-                                <Button Padding="10,3" FontSize="12" FontWeight="Medium" CornerRadius="6" BorderThickness="0" Background="{x:Bind GetSegmentBackground(ViewModel.SegmentFilter, 'Focus'), Mode=OneWay}" Foreground="{x:Bind GetSegmentForeground(ViewModel.SegmentFilter, 'Focus'), Mode=OneWay}" Click="OnFilterFocusClicked" Content="Focus" />
-                                <Button Padding="10,3" FontSize="12" FontWeight="Medium" CornerRadius="6" BorderThickness="0" Background="{x:Bind GetSegmentBackground(ViewModel.SegmentFilter, 'Quick 15m'), Mode=OneWay}" Foreground="{x:Bind GetSegmentForeground(ViewModel.SegmentFilter, 'Quick 15m'), Mode=OneWay}" Click="OnFilterQuickClicked" Content="Quick 15m" />
+                        <!-- Dynamic Tag Filter Capsule Controls with Drop Shadow -->
+                        <Grid VerticalAlignment="Center">
+                            <!-- Drop Shadow Underlay -->
+                            <Border
+                                Margin="0,1.5,0,-1"
+                                CornerRadius="8"
+                                Background="{ThemeResource AppCardShadowBrush}" />
+
+                            <Border
+                                Background="{ThemeResource AppCanvasBackgroundBrush}"
+                                BorderBrush="{ThemeResource AppCardBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="3">
+                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                    <!-- "All" Pill -->
+                                    <Button
+                                        Style="{StaticResource AllFilterButtonStyle}"
+                                        Background="{x:Bind GetAllFilterBackground(ViewModel.TagFilter), Mode=OneWay}"
+                                        Foreground="{x:Bind GetAllFilterForeground(ViewModel.TagFilter), Mode=OneWay}"
+                                        Click="OnFilterAllClicked"
+                                        Content="All" />
+
+                                <!-- Dynamic Filter Tags -->
+                                <ItemsControl ItemsSource="{x:Bind ViewModel.AvailableTags, Mode=OneWay}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal" Spacing="3" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="models:PlannerTag">
+                                            <Button
+                                                Style="{StaticResource TagFilterButtonStyle}"
+                                                Background="{x:Bind ColorHex, Converter={StaticResource HexToBrushConverter}}"
+                                                Click="OnFilterTagChipClicked"
+                                                Content="{x:Bind Name}"
+                                                ToolTipService.ToolTip="Click to filter. Right-click to recolor or remove.">
+                                                <Button.ContextFlyout>
+                                                    <MenuFlyout>
+                                                        <MenuFlyoutSubItem Text="Change Color">
+                                                            <MenuFlyoutSubItem.Icon>
+                                                                <FontIcon Glyph="&#xE790;" />
+                                                            </MenuFlyoutSubItem.Icon>
+                                                            <MenuFlyoutItem Text="Blue" Click="OnFilterTagMenuColorClicked" Tag="#005FB8" />
+                                                            <MenuFlyoutItem Text="Emerald" Click="OnFilterTagMenuColorClicked" Tag="#107C41" />
+                                                            <MenuFlyoutItem Text="Purple" Click="OnFilterTagMenuColorClicked" Tag="#744DA9" />
+                                                            <MenuFlyoutItem Text="Amber" Click="OnFilterTagMenuColorClicked" Tag="#CA5010" />
+                                                            <MenuFlyoutItem Text="Crimson" Click="OnFilterTagMenuColorClicked" Tag="#D13438" />
+                                                            <MenuFlyoutItem Text="Cyan" Click="OnFilterTagMenuColorClicked" Tag="#0078D4" />
+                                                            <MenuFlyoutItem Text="Teal" Click="OnFilterTagMenuColorClicked" Tag="#038387" />
+                                                            <MenuFlyoutItem Text="Slate" Click="OnFilterTagMenuColorClicked" Tag="#475569" />
+                                                        </MenuFlyoutSubItem>
+                                                        <MenuFlyoutSeparator />
+                                                        <MenuFlyoutItem Text="Delete Filter" Click="OnDeleteFilterTagClicked" Tag="{x:Bind Name}">
+                                                            <MenuFlyoutItem.Icon>
+                                                                <FontIcon Glyph="&#xE74D;" Foreground="#E81123" />
+                                                            </MenuFlyoutItem.Icon>
+                                                        </MenuFlyoutItem>
+                                                    </MenuFlyout>
+                                                </Button.ContextFlyout>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+
+                                <!-- [+] Add Filter Tag Button with Flyout -->
+                                <Button
+                                    Style="{StaticResource AddFilterPillButtonStyle}"
+                                    ToolTipService.ToolTip="Add Filter Tag">
+                                    <Button.Flyout>
+                                        <Flyout x:Name="NewFilterFlyout">
+                                            <StackPanel Width="220" Spacing="8">
+                                                <TextBlock Text="New Filter Tag" FontWeight="SemiBold" FontSize="12" Foreground="{ThemeResource AppTextPrimaryBrush}" />
+                                                <TextBox x:Name="NewFilterTagNameBox" PlaceholderText="Tag name (e.g. #Urgent)..." FontSize="12" KeyDown="OnNewFilterTagKeyDown" />
+                                                <TextBlock Text="Choose Color" FontSize="11" Foreground="{ThemeResource AppTextSecondaryBrush}" />
+                                                <StackPanel Orientation="Horizontal" Spacing="5">
+                                                    <Button Width="20" Height="20" CornerRadius="10" Padding="0" Background="#005FB8" Click="OnNewFilterColorPicked" Tag="#005FB8" ToolTipService.ToolTip="Blue" />
+                                                    <Button Width="20" Height="20" CornerRadius="10" Padding="0" Background="#107C41" Click="OnNewFilterColorPicked" Tag="#107C41" ToolTipService.ToolTip="Emerald" />
+                                                    <Button Width="20" Height="20" CornerRadius="10" Padding="0" Background="#744DA9" Click="OnNewFilterColorPicked" Tag="#744DA9" ToolTipService.ToolTip="Purple" />
+                                                    <Button Width="20" Height="20" CornerRadius="10" Padding="0" Background="#CA5010" Click="OnNewFilterColorPicked" Tag="#CA5010" ToolTipService.ToolTip="Amber" />
+                                                    <Button Width="20" Height="20" CornerRadius="10" Padding="0" Background="#D13438" Click="OnNewFilterColorPicked" Tag="#D13438" ToolTipService.ToolTip="Crimson" />
+                                                    <Button Width="20" Height="20" CornerRadius="10" Padding="0" Background="#0078D4" Click="OnNewFilterColorPicked" Tag="#0078D4" ToolTipService.ToolTip="Cyan" />
+                                                    <Button Width="20" Height="20" CornerRadius="10" Padding="0" Background="#038387" Click="OnNewFilterColorPicked" Tag="#038387" ToolTipService.ToolTip="Teal" />
+                                                </StackPanel>
+                                                <Button Content="Add Filter" Style="{StaticResource AccentButtonStyle}" HorizontalAlignment="Stretch" Click="OnCreateNewFilterTagClicked" />
+                                            </StackPanel>
+                                        </Flyout>
+                                    </Button.Flyout>
+                                    <FontIcon Glyph="&#xE710;" FontSize="10" Foreground="{ThemeResource AppTextSecondaryBrush}" />
+                                </Button>
                             </StackPanel>
                         </Border>
-                    </StackPanel>
+                    </Grid>
+                </StackPanel>
 
                     <!-- Center Search Box -->
                     <AutoSuggestBox
@@ -478,6 +816,12 @@
                         Foreground="White"
                         VerticalAlignment="Center"
                         Command="{x:Bind ViewModel.OpenCreateTaskDialogCommand}">
+                        <Button.Resources>
+                            <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="#106EBE" />
+                            <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="#004E98" />
+                            <SolidColorBrush x:Key="ButtonForegroundPointerOver" Color="White" />
+                            <SolidColorBrush x:Key="ButtonForegroundPressed" Color="White" />
+                        </Button.Resources>
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <FontIcon Glyph="&#xE710;" FontSize="12" FontWeight="Bold" Foreground="White" />
                             <TextBlock Text="Add Task" FontSize="12" FontWeight="SemiBold" Foreground="White" />
@@ -526,77 +870,48 @@
                                 </StackPanel>
 
                                 <!-- Fluent Progress Ring & Stat Badge -->
+                                <Grid Grid.Column="1" VerticalAlignment="Center" Margin="0,1,0,2">
+                                    <Border Margin="0,2,0,-1.5" CornerRadius="8" Background="{ThemeResource AppCardShadowBrush}" />
+                                    <Border
+                                        Background="{ThemeResource AppCardBackgroundBrush}"
+                                        BorderBrush="{ThemeResource AppCardBorderBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="8"
+                                        Padding="12,8">
+                                        <StackPanel Orientation="Horizontal" Spacing="10">
+                                            <ProgressRing
+                                                Width="22"
+                                                Height="22"
+                                                IsIndeterminate="False"
+                                                Value="{x:Bind ViewModel.CompletionPercentage, Mode=OneWay}"
+                                                Foreground="{ThemeResource AppPrimaryAccentBrush}" />
+                                            <TextBlock
+                                                Text="{x:Bind ViewModel.CompletionRatioText, Mode=OneWay}"
+                                                FontSize="12"
+                                                FontWeight="SemiBold"
+                                                Foreground="{ThemeResource AppTextPrimaryBrush}"
+                                                VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+                            </Grid>
+
+                            <!-- Empty State for Today View -->
+                            <Grid Margin="0,1,0,2" Visibility="{x:Bind ViewModel.TotalTasksCount, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=inverse}">
+                                <Border Margin="0,2,0,-1.5" CornerRadius="8" Background="{ThemeResource AppCardShadowBrush}" />
                                 <Border
-                                    Grid.Column="1"
                                     Background="{ThemeResource AppCardBackgroundBrush}"
                                     BorderBrush="{ThemeResource AppCardBorderBrush}"
                                     BorderThickness="1"
                                     CornerRadius="8"
-                                    Padding="12,8"
-                                    VerticalAlignment="Center">
-                                    <StackPanel Orientation="Horizontal" Spacing="10">
-                                        <ProgressRing
-                                            Width="22"
-                                            Height="22"
-                                            IsIndeterminate="False"
-                                            Value="{x:Bind ViewModel.CompletionPercentage, Mode=OneWay}"
-                                            Foreground="{ThemeResource AppPrimaryAccentBrush}" />
-                                        <TextBlock
-                                            Text="{x:Bind ViewModel.CompletionRatioText, Mode=OneWay}"
-                                            FontSize="12"
-                                            FontWeight="SemiBold"
-                                            Foreground="{ThemeResource AppTextPrimaryBrush}"
-                                            VerticalAlignment="Center" />
+                                    Padding="32,28">
+                                    <StackPanel HorizontalAlignment="Center" Spacing="10">
+                                        <FontIcon Glyph="&#xE735;" FontSize="32" Foreground="{ThemeResource AppPrimaryAccentBrush}" HorizontalAlignment="Center" />
+                                        <TextBlock Text="No tasks scheduled for today" FontSize="14" FontWeight="SemiBold" Foreground="{ThemeResource AppTextPrimaryBrush}" HorizontalAlignment="Center" />
+                                        <TextBlock Text="Click '+ Add Task' to plan your day." FontSize="12" Foreground="{ThemeResource AppTextSecondaryBrush}" HorizontalAlignment="Center" />
                                     </StackPanel>
                                 </Border>
                             </Grid>
-
-                            <!-- Tag Filter Chips (Dynamic & Theme-Aware) -->
-                            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <Button Padding="10,4" CornerRadius="4" FontSize="11" FontWeight="SemiBold" BorderThickness="0" Background="{x:Bind GetTagBackground(ViewModel.TagFilter, 'All'), Mode=OneWay}" Foreground="{x:Bind GetTagForeground(ViewModel.TagFilter, 'All'), Mode=OneWay}" Click="OnTagAllClicked" Content="All" />
-                                    <ItemsControl ItemsSource="{x:Bind ViewModel.AvailableTags, Mode=OneWay}">
-                                        <ItemsControl.ItemsPanel>
-                                            <ItemsPanelTemplate>
-                                                <StackPanel Orientation="Horizontal" Spacing="6" />
-                                            </ItemsPanelTemplate>
-                                        </ItemsControl.ItemsPanel>
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate x:DataType="models:PlannerTag">
-                                                <Button
-                                                    Padding="10,4"
-                                                    CornerRadius="4"
-                                                    FontSize="11"
-                                                    FontWeight="Medium"
-                                                    BorderThickness="1"
-                                                    BorderBrush="{ThemeResource AppCardBorderBrush}"
-                                                    Background="{ThemeResource AppCardBackgroundBrush}"
-                                                    Click="OnTagChipClicked">
-                                                    <StackPanel Orientation="Horizontal" Spacing="6">
-                                                        <Ellipse Width="6" Height="6" Fill="{x:Bind ColorHex, Converter={StaticResource HexToBrushConverter}}" VerticalAlignment="Center" />
-                                                        <TextBlock Text="{x:Bind Name}" Foreground="{ThemeResource AppTextPrimaryBrush}" FontSize="11" VerticalAlignment="Center" />
-                                                    </StackPanel>
-                                                </Button>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                </StackPanel>
-                            </ScrollViewer>
-
-                            <!-- Empty State for Today View -->
-                            <Border
-                                Background="{ThemeResource AppCardBackgroundBrush}"
-                                BorderBrush="{ThemeResource AppCardBorderBrush}"
-                                BorderThickness="1"
-                                CornerRadius="8"
-                                Padding="32,28"
-                                Visibility="{x:Bind ViewModel.TotalTasksCount, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=inverse}">
-                                <StackPanel HorizontalAlignment="Center" Spacing="10">
-                                    <FontIcon Glyph="&#xE735;" FontSize="32" Foreground="{ThemeResource AppPrimaryAccentBrush}" HorizontalAlignment="Center" />
-                                    <TextBlock Text="No tasks scheduled for today" FontSize="14" FontWeight="SemiBold" Foreground="{ThemeResource AppTextPrimaryBrush}" HorizontalAlignment="Center" />
-                                    <TextBlock Text="Click '+ Add Task' or press Ctrl+N to plan your day." FontSize="12" Foreground="{ThemeResource AppTextSecondaryBrush}" HorizontalAlignment="Center" />
-                                </StackPanel>
-                            </Border>
 
                             <!-- Section 1: Morning & Priority Focus -->
                             <StackPanel Spacing="6">
@@ -608,23 +923,26 @@
                                     <TextBlock Grid.Column="0" Text="MORNING &amp; PRIORITY FOCUS" FontSize="11" FontWeight="Bold" Foreground="{ThemeResource AppTextSecondaryBrush}" />
                                     <TextBlock Grid.Column="1" Text="{x:Bind GetCountLabel(ViewModel.MorningTasks.Count), Mode=OneWay}" FontSize="11" Foreground="{ThemeResource AppTextSecondaryBrush}" />
                                 </Grid>
-                                <Border Background="{ThemeResource AppCardBackgroundBrush}" BorderBrush="{ThemeResource AppCardBorderBrush}" BorderThickness="1" CornerRadius="8">
-                                    <ItemsControl ItemsSource="{x:Bind ViewModel.MorningTasks, Mode=OneWay}">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate x:DataType="models:PlannerTask">
-                                                <controls:TaskItemCard
-                                                    TaskItem="{x:Bind}"
-                                                    TaskToggleRequested="OnTaskToggleRequested"
-                                                    TaskDeleteRequested="OnTaskDeleteRequested"
-                                                    TaskEditRequested="OnTaskEditRequested"
-                                                    SubTaskAddRequested="OnSubTaskAddRequested"
-                                                    SubTaskToggleRequested="OnSubTaskToggleRequested"
-                                                    SubTaskDeleteRequested="OnSubTaskDeleteRequested"
-                                                    SubTaskCreateRequested="OnSubTaskCreateRequested" />
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                </Border>
+                                <Grid Margin="0,1,0,3">
+                                    <Border Margin="0,2,0,-1.5" CornerRadius="8" Background="{ThemeResource AppCardShadowBrush}" />
+                                    <Border Background="{ThemeResource AppCardBackgroundBrush}" BorderBrush="{ThemeResource AppCardBorderBrush}" BorderThickness="1" CornerRadius="8">
+                                        <ItemsControl ItemsSource="{x:Bind ViewModel.MorningTasks, Mode=OneWay}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="models:PlannerTask">
+                                                    <controls:TaskItemCard
+                                                        TaskItem="{x:Bind}"
+                                                        TaskToggleRequested="OnTaskToggleRequested"
+                                                        TaskDeleteRequested="OnTaskDeleteRequested"
+                                                        TaskEditRequested="OnTaskEditRequested"
+                                                        SubTaskAddRequested="OnSubTaskAddRequested"
+                                                        SubTaskToggleRequested="OnSubTaskToggleRequested"
+                                                        SubTaskDeleteRequested="OnSubTaskDeleteRequested"
+                                                        SubTaskCreateRequested="OnSubTaskCreateRequested" />
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </Border>
+                                </Grid>
                             </StackPanel>
 
                             <!-- Section 2: This Afternoon -->
@@ -637,23 +955,26 @@
                                     <TextBlock Grid.Column="0" Text="THIS AFTERNOON" FontSize="11" FontWeight="Bold" Foreground="{ThemeResource AppTextSecondaryBrush}" />
                                     <TextBlock Grid.Column="1" Text="{x:Bind GetCountLabel(ViewModel.AfternoonTasks.Count), Mode=OneWay}" FontSize="11" Foreground="{ThemeResource AppTextSecondaryBrush}" />
                                 </Grid>
-                                <Border Background="{ThemeResource AppCardBackgroundBrush}" BorderBrush="{ThemeResource AppCardBorderBrush}" BorderThickness="1" CornerRadius="8">
-                                    <ItemsControl ItemsSource="{x:Bind ViewModel.AfternoonTasks, Mode=OneWay}">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate x:DataType="models:PlannerTask">
-                                                <controls:TaskItemCard
-                                                    TaskItem="{x:Bind}"
-                                                    TaskToggleRequested="OnTaskToggleRequested"
-                                                    TaskDeleteRequested="OnTaskDeleteRequested"
-                                                    TaskEditRequested="OnTaskEditRequested"
-                                                    SubTaskAddRequested="OnSubTaskAddRequested"
-                                                    SubTaskToggleRequested="OnSubTaskToggleRequested"
-                                                    SubTaskDeleteRequested="OnSubTaskDeleteRequested"
-                                                    SubTaskCreateRequested="OnSubTaskCreateRequested" />
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                </Border>
+                                <Grid Margin="0,1,0,3">
+                                    <Border Margin="0,2,0,-1.5" CornerRadius="8" Background="{ThemeResource AppCardShadowBrush}" />
+                                    <Border Background="{ThemeResource AppCardBackgroundBrush}" BorderBrush="{ThemeResource AppCardBorderBrush}" BorderThickness="1" CornerRadius="8">
+                                        <ItemsControl ItemsSource="{x:Bind ViewModel.AfternoonTasks, Mode=OneWay}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="models:PlannerTask">
+                                                    <controls:TaskItemCard
+                                                        TaskItem="{x:Bind}"
+                                                        TaskToggleRequested="OnTaskToggleRequested"
+                                                        TaskDeleteRequested="OnTaskDeleteRequested"
+                                                        TaskEditRequested="OnTaskEditRequested"
+                                                        SubTaskAddRequested="OnSubTaskAddRequested"
+                                                        SubTaskToggleRequested="OnSubTaskToggleRequested"
+                                                        SubTaskDeleteRequested="OnSubTaskDeleteRequested"
+                                                        SubTaskCreateRequested="OnSubTaskCreateRequested" />
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </Border>
+                                </Grid>
                             </StackPanel>
 
                             <!-- Section 3: Evening & Wind Down -->
@@ -666,23 +987,26 @@
                                     <TextBlock Grid.Column="0" Text="EVENING &amp; WIND DOWN" FontSize="11" FontWeight="Bold" Foreground="{ThemeResource AppTextSecondaryBrush}" />
                                     <TextBlock Grid.Column="1" Text="{x:Bind GetCountLabel(ViewModel.EveningTasks.Count), Mode=OneWay}" FontSize="11" Foreground="{ThemeResource AppTextSecondaryBrush}" />
                                 </Grid>
-                                <Border Background="{ThemeResource AppCardBackgroundBrush}" BorderBrush="{ThemeResource AppCardBorderBrush}" BorderThickness="1" CornerRadius="8">
-                                    <ItemsControl ItemsSource="{x:Bind ViewModel.EveningTasks, Mode=OneWay}">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate x:DataType="models:PlannerTask">
-                                                <controls:TaskItemCard
-                                                    TaskItem="{x:Bind}"
-                                                    TaskToggleRequested="OnTaskToggleRequested"
-                                                    TaskDeleteRequested="OnTaskDeleteRequested"
-                                                    TaskEditRequested="OnTaskEditRequested"
-                                                    SubTaskAddRequested="OnSubTaskAddRequested"
-                                                    SubTaskToggleRequested="OnSubTaskToggleRequested"
-                                                    SubTaskDeleteRequested="OnSubTaskDeleteRequested"
-                                                    SubTaskCreateRequested="OnSubTaskCreateRequested" />
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                </Border>
+                                <Grid Margin="0,1,0,3">
+                                    <Border Margin="0,2,0,-1.5" CornerRadius="8" Background="{ThemeResource AppCardShadowBrush}" />
+                                    <Border Background="{ThemeResource AppCardBackgroundBrush}" BorderBrush="{ThemeResource AppCardBorderBrush}" BorderThickness="1" CornerRadius="8">
+                                        <ItemsControl ItemsSource="{x:Bind ViewModel.EveningTasks, Mode=OneWay}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="models:PlannerTask">
+                                                    <controls:TaskItemCard
+                                                        TaskItem="{x:Bind}"
+                                                        TaskToggleRequested="OnTaskToggleRequested"
+                                                        TaskDeleteRequested="OnTaskDeleteRequested"
+                                                        TaskEditRequested="OnTaskEditRequested"
+                                                        SubTaskAddRequested="OnSubTaskAddRequested"
+                                                        SubTaskToggleRequested="OnSubTaskToggleRequested"
+                                                        SubTaskDeleteRequested="OnSubTaskDeleteRequested"
+                                                        SubTaskCreateRequested="OnSubTaskCreateRequested" />
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </Border>
+                                </Grid>
                             </StackPanel>
 
                         </StackPanel>
@@ -691,12 +1015,14 @@
                         <StackPanel Grid.Column="1" Spacing="16">
 
                             <!-- Today's Horizon Card -->
-                            <Border
-                                Background="{ThemeResource AppCardBackgroundBrush}"
-                                BorderBrush="{ThemeResource AppCardBorderBrush}"
-                                BorderThickness="1"
-                                CornerRadius="8"
-                                Padding="16">
+                            <Grid Margin="0,1,0,3">
+                                <Border Margin="0,2,0,-1.5" CornerRadius="8" Background="{ThemeResource AppCardShadowBrush}" />
+                                <Border
+                                    Background="{ThemeResource AppCardBackgroundBrush}"
+                                    BorderBrush="{ThemeResource AppCardBorderBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    Padding="16">
                                 <StackPanel Spacing="12">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
@@ -758,8 +1084,11 @@
                                     </Border>
                                 </StackPanel>
                             </Border>
+                        </Grid>
 
-                            <!-- Weekly Load Sparkline / Bar Chart Card -->
+                        <!-- Weekly Load Sparkline / Bar Chart Card -->
+                        <Grid Margin="0,1,0,3">
+                            <Border Margin="0,2,0,-1.5" CornerRadius="8" Background="{ThemeResource AppCardShadowBrush}" />
                             <Border
                                 Background="{ThemeResource AppCardBackgroundBrush}"
                                 BorderBrush="{ThemeResource AppCardBorderBrush}"
@@ -780,6 +1109,7 @@
                                     <controls:WeeklyLoadChart Height="90" HorizontalAlignment="Stretch" WeeklyLoads="{x:Bind ViewModel.WeeklyLoads, Mode=OneWay}" />
                                 </StackPanel>
                             </Border>
+                        </Grid>
 
                         </StackPanel>
                     </Grid>
@@ -802,43 +1132,47 @@
                         </Grid>
 
                         <!-- Empty State for Sectioned List -->
-                        <Border
-                            Background="{ThemeResource AppCardBackgroundBrush}"
-                            BorderBrush="{ThemeResource AppCardBorderBrush}"
-                            BorderThickness="1"
-                            CornerRadius="8"
-                            Padding="32,28"
-                            Visibility="{x:Bind ViewModel.SectionedTasks.Count, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=inverse}">
-                            <StackPanel HorizontalAlignment="Center" Spacing="10">
-                                <FontIcon Glyph="&#xE715;" FontSize="32" Foreground="{ThemeResource AppPrimaryAccentBrush}" HorizontalAlignment="Center" />
-                                <TextBlock Text="No tasks here yet" FontSize="14" FontWeight="SemiBold" Foreground="{ThemeResource AppTextPrimaryBrush}" HorizontalAlignment="Center" />
-                                <TextBlock Text="Click '+ Add Task' above or press Ctrl+N to create a task." FontSize="12" Foreground="{ThemeResource AppTextSecondaryBrush}" HorizontalAlignment="Center" />
-                            </StackPanel>
-                        </Border>
+                        <Grid Margin="0,1,0,3" Visibility="{x:Bind ViewModel.SectionedTasks.Count, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=inverse}">
+                            <Border Margin="0,2,0,-1.5" CornerRadius="8" Background="{ThemeResource AppCardShadowBrush}" />
+                            <Border
+                                Background="{ThemeResource AppCardBackgroundBrush}"
+                                BorderBrush="{ThemeResource AppCardBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="32,28">
+                                <StackPanel HorizontalAlignment="Center" Spacing="10">
+                                    <FontIcon Glyph="&#xE715;" FontSize="32" Foreground="{ThemeResource AppPrimaryAccentBrush}" HorizontalAlignment="Center" />
+                                    <TextBlock Text="No tasks here yet" FontSize="14" FontWeight="SemiBold" Foreground="{ThemeResource AppTextPrimaryBrush}" HorizontalAlignment="Center" />
+                                    <TextBlock Text="Click '+ Add Task' above to create a task." FontSize="12" Foreground="{ThemeResource AppTextSecondaryBrush}" HorizontalAlignment="Center" />
+                                </StackPanel>
+                            </Border>
+                        </Grid>
 
                         <!-- Items List -->
-                        <Border
-                            Background="{ThemeResource AppCardBackgroundBrush}"
-                            BorderBrush="{ThemeResource AppCardBorderBrush}"
-                            BorderThickness="1"
-                            CornerRadius="8"
-                            Visibility="{x:Bind ViewModel.SectionedTasks.Count, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
-                            <ItemsControl ItemsSource="{x:Bind ViewModel.SectionedTasks, Mode=OneWay}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="models:PlannerTask">
-                                        <controls:TaskItemCard
-                                            TaskItem="{x:Bind}"
-                                            TaskToggleRequested="OnTaskToggleRequested"
-                                            TaskDeleteRequested="OnTaskDeleteRequested"
-                                            TaskEditRequested="OnTaskEditRequested"
-                                            SubTaskAddRequested="OnSubTaskAddRequested"
-                                            SubTaskToggleRequested="OnSubTaskToggleRequested"
-                                            SubTaskDeleteRequested="OnSubTaskDeleteRequested"
-                                            SubTaskCreateRequested="OnSubTaskCreateRequested" />
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </Border>
+                        <Grid Margin="0,1,0,3" Visibility="{x:Bind ViewModel.SectionedTasks.Count, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <Border Margin="0,2,0,-1.5" CornerRadius="8" Background="{ThemeResource AppCardShadowBrush}" />
+                            <Border
+                                Background="{ThemeResource AppCardBackgroundBrush}"
+                                BorderBrush="{ThemeResource AppCardBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="8">
+                                <ItemsControl ItemsSource="{x:Bind ViewModel.SectionedTasks, Mode=OneWay}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="models:PlannerTask">
+                                            <controls:TaskItemCard
+                                                TaskItem="{x:Bind}"
+                                                TaskToggleRequested="OnTaskToggleRequested"
+                                                TaskDeleteRequested="OnTaskDeleteRequested"
+                                                TaskEditRequested="OnTaskEditRequested"
+                                                SubTaskAddRequested="OnSubTaskAddRequested"
+                                                SubTaskToggleRequested="OnSubTaskToggleRequested"
+                                                SubTaskDeleteRequested="OnSubTaskDeleteRequested"
+                                                SubTaskCreateRequested="OnSubTaskCreateRequested" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Border>
+                        </Grid>
                     </StackPanel>
 
                 </Grid>
@@ -858,30 +1192,7 @@
                     </Grid.ColumnDefinitions>
 
                     <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
-                        <StackPanel
-                            Orientation="Horizontal"
-                            Spacing="4"
-                            Tapped="OnCtrlNBadgeTapped"
-                            ToolTipService.ToolTip="Click to focus New Task (Ctrl+N)">
-                            <Border Background="{ThemeResource AppCardBackgroundBrush}" BorderBrush="{ThemeResource AppCardBorderBrush}" BorderThickness="1" CornerRadius="3" Padding="4,1">
-                                <TextBlock Text="Ctrl+N" FontSize="10" FontWeight="SemiBold" Foreground="{ThemeResource AppTextPrimaryBrush}" />
-                            </Border>
-                            <TextBlock Text="New Task" FontSize="11" Foreground="{ThemeResource AppTextSecondaryBrush}" VerticalAlignment="Center" />
-                        </StackPanel>
-
-                        <StackPanel Orientation="Horizontal" Spacing="4">
-                            <Border Background="{ThemeResource AppCardBackgroundBrush}" BorderBrush="{ThemeResource AppCardBorderBrush}" BorderThickness="1" CornerRadius="3" Padding="4,1">
-                                <TextBlock Text="Ctrl+Shift+N" FontSize="10" FontWeight="SemiBold" Foreground="{ThemeResource AppTextPrimaryBrush}" />
-                            </Border>
-                            <TextBlock Text="New Section" FontSize="11" Foreground="{ThemeResource AppTextSecondaryBrush}" VerticalAlignment="Center" />
-                        </StackPanel>
-
-                        <StackPanel Orientation="Horizontal" Spacing="4">
-                            <Border Background="{ThemeResource AppCardBackgroundBrush}" BorderBrush="{ThemeResource AppCardBorderBrush}" BorderThickness="1" CornerRadius="3" Padding="4,1">
-                                <TextBlock Text="Space" FontSize="10" FontWeight="SemiBold" Foreground="{ThemeResource AppTextPrimaryBrush}" />
-                            </Border>
-                            <TextBlock Text="Complete" FontSize="11" Foreground="{ThemeResource AppTextSecondaryBrush}" VerticalAlignment="Center" />
-                        </StackPanel>
+                        <TextBlock Text="Planner Workspace" FontSize="11" Foreground="{ThemeResource AppTextSecondaryBrush}" VerticalAlignment="Center" />
                     </StackPanel>
 
                     <!-- Cloud Sync Active Indicator -->
@@ -940,8 +1251,34 @@
                 </StackPanel>
 
                 <StackPanel Spacing="6">
-                    <TextBlock Text="Sync &amp; Storage" FontWeight="SemiBold" FontSize="13" Foreground="{ThemeResource AppTextPrimaryBrush}" />
-                    <TextBlock Text="Local cache-first storage with atomic write protection." FontSize="12" Foreground="{ThemeResource AppTextSecondaryBrush}" TextWrapping="Wrap" />
+                    <TextBlock Text="Data &amp; Storage Location" FontWeight="SemiBold" FontSize="13" Foreground="{ThemeResource AppTextPrimaryBrush}" />
+                    <TextBlock Text="Folder where tasks and application settings are stored." FontSize="12" Foreground="{ThemeResource AppTextSecondaryBrush}" TextWrapping="Wrap" />
+                    <Grid ColumnSpacing="8" Margin="0,4,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox
+                            Grid.Column="0"
+                            IsReadOnly="True"
+                            Text="{x:Bind ViewModel.CurrentStoragePath, Mode=OneWay}"
+                            FontSize="11"
+                            VerticalAlignment="Center" />
+                        <Button
+                            Grid.Column="1"
+                            Content="Browse..."
+                            Click="OnBrowseStorageFolderClicked"
+                            VerticalAlignment="Center" />
+                    </Grid>
+                    <Button
+                        Content="Reset to Default Location"
+                        FontSize="11"
+                        Padding="0"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Foreground="{ThemeResource AppPrimaryAccentBrush}"
+                        Click="OnResetStorageLocationClicked"
+                        HorizontalAlignment="Left" />
                 </StackPanel>
 
                 <StackPanel Spacing="4">
@@ -951,7 +1288,7 @@
             </StackPanel>
         </ContentDialog>
 
-        <!-- Create Task Modal Dialog -->
+        <!-- Create Task Modal Dialog (Rectangular Widescreen) -->
         <ContentDialog
             x:Name="CreateTaskModalDialog"
             Title="New Task"
@@ -959,135 +1296,255 @@
             CloseButtonText="Cancel"
             DefaultButton="Primary"
             PrimaryButtonClick="OnCreateTaskConfirmed">
-            <StackPanel Spacing="12" Margin="0,10,0,0" MinWidth="380">
-                <!-- Task Title -->
-                <TextBox
-                    x:Name="ModalTaskTitleBox"
-                    Header="Title"
-                    PlaceholderText="What do you need to do?"
-                    Text="{x:Bind ViewModel.TaskDraftTitle, Mode=TwoWay}"
-                    FontSize="13" />
+            <ContentDialog.Resources>
+                <x:Double x:Key="ContentDialogMaxWidth">820</x:Double>
+                <x:Double x:Key="ContentDialogMaxHeight">660</x:Double>
+            </ContentDialog.Resources>
+            <Grid Width="720" RowSpacing="12" Margin="0,6,0,0">
+                <Grid.RowDefinitions>
+                    <!-- Row 0: Full-width Header: Title & Tags -->
+                    <RowDefinition Height="Auto" />
+                    <!-- Row 1: Two Columns: Left (Settings) and Right (Description & Checklists) -->
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
 
-                <!-- Section & Date row -->
-                <Grid ColumnSpacing="10">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
+                <!-- Full-Width Header: Title & Tag System -->
+                <StackPanel Grid.Row="0" Spacing="8">
+                    <!-- Title -->
+                    <TextBox
+                        x:Name="ModalTaskTitleBox"
+                        Header="Title"
+                        PlaceholderText="What do you need to do?"
+                        Text="{x:Bind ViewModel.TaskDraftTitle, Mode=TwoWay}"
+                        FontSize="14"
+                        FontWeight="SemiBold" />
 
-                    <ComboBox
-                        Grid.Column="0"
-                        Header="Section"
-                        HorizontalAlignment="Stretch"
-                        SelectedIndex="0"
-                        SelectionChanged="OnModalSectionChanged">
-                        <ComboBoxItem Content="Morning" />
-                        <ComboBoxItem Content="Afternoon" />
-                        <ComboBoxItem Content="Evening" />
-                        <ComboBoxItem Content="Inbox" />
-                    </ComboBox>
-
-                    <CalendarDatePicker
-                        Grid.Column="1"
-                        Header="Due Date"
-                        HorizontalAlignment="Stretch"
-                        Date="{x:Bind ViewModel.TaskDraftDueDate, Mode=TwoWay}"
-                        PlaceholderText="Pick date" />
-                </Grid>
-
-                <!-- Project & Duration Row -->
-                <Grid ColumnSpacing="10">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-
-                    <ComboBox
-                        Grid.Column="0"
-                        Header="List / Project"
-                        HorizontalAlignment="Stretch"
-                        ItemsSource="{x:Bind ViewModel.Projects, Mode=OneWay}"
-                        DisplayMemberPath="Name"
-                        SelectedValuePath="Id"
-                        SelectedValue="{x:Bind ViewModel.TaskDraftProjectId, Mode=TwoWay}"
-                        PlaceholderText="None" />
-
-                    <ComboBox
-                        Grid.Column="1"
-                        Header="Duration"
-                        HorizontalAlignment="Stretch"
-                        Text="{x:Bind ViewModel.TaskDraftDuration, Mode=TwoWay}"
-                        IsEditable="True"
-                        PlaceholderText="e.g. 15m, 30m">
-                        <ComboBoxItem Content="15m" />
-                        <ComboBoxItem Content="30m" />
-                        <ComboBoxItem Content="45m" />
-                        <ComboBoxItem Content="1h" />
-                        <ComboBoxItem Content="2h" />
-                    </ComboBox>
-                </Grid>
-
-                <!-- Quick Presets -->
-                <StackPanel Spacing="4">
-                    <TextBlock Text="Schedule Preset" FontSize="11" Foreground="{ThemeResource AppTextSecondaryBrush}" />
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <Button Padding="8,3" FontSize="11" CornerRadius="4" Content="Today" Click="OnSchedulePresetTodayClicked" />
-                        <Button Padding="8,3" FontSize="11" CornerRadius="4" Content="Tomorrow" Click="OnSchedulePresetTomorrowClicked" />
-                        <Button Padding="8,3" FontSize="11" CornerRadius="4" Content="9:00 AM" Click="OnSchedulePresetMorningClicked" />
-                        <Button Padding="8,3" FontSize="11" CornerRadius="4" Content="2:00 PM" Click="OnSchedulePresetAfternoonClicked" />
-                    </StackPanel>
-                </StackPanel>
-
-                <!-- Tag & Color Row -->
-                <StackPanel Spacing="4">
-                    <TextBlock Text="Tag &amp; Color" FontSize="11" Foreground="{ThemeResource AppTextSecondaryBrush}" />
-                    <Grid ColumnSpacing="8">
+                    <!-- Tags Header & Quick Presets -->
+                    <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <TextBox
-                            Grid.Column="0"
-                            PlaceholderText="e.g. #Work, #Personal, #Dev"
-                            Text="{x:Bind ViewModel.TaskDraftTag, Mode=TwoWay}"
-                            FontSize="12" />
-                        <!-- Color Preview Circle -->
-                        <Border
-                            Grid.Column="1"
-                            Width="26"
-                            Height="26"
-                            CornerRadius="13"
-                            VerticalAlignment="Center"
-                            BorderBrush="{ThemeResource AppCardBorderBrush}"
-                            BorderThickness="1"
-                            Background="{x:Bind ViewModel.TaskDraftTagColor, Mode=OneWay, Converter={StaticResource HexToBrushConverter}}" />
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                            <TextBlock Text="Tags (#):" FontSize="11" FontWeight="SemiBold" Foreground="{ThemeResource AppTextSecondaryBrush}" VerticalAlignment="Center" />
+                            <Button Content="#Work" Padding="8,2" FontSize="11" CornerRadius="10" Click="OnQuickTagWorkClicked" Background="{ThemeResource AppCardBackgroundBrush}" BorderBrush="{ThemeResource AppCardBorderBrush}" BorderThickness="1" Foreground="{ThemeResource AppTextPrimaryBrush}" />
+                            <Button Content="#Personal" Padding="8,2" FontSize="11" CornerRadius="10" Click="OnQuickTagPersonalClicked" Background="{ThemeResource AppCardBackgroundBrush}" BorderBrush="{ThemeResource AppCardBorderBrush}" BorderThickness="1" Foreground="{ThemeResource AppTextPrimaryBrush}" />
+                            <Button Content="#Focus" Padding="8,2" FontSize="11" CornerRadius="10" Click="OnQuickTagFocusClicked" Background="{ThemeResource AppCardBackgroundBrush}" BorderBrush="{ThemeResource AppCardBorderBrush}" BorderThickness="1" Foreground="{ThemeResource AppTextPrimaryBrush}" />
+                        </StackPanel>
+                        <TextBlock Grid.Column="1" Text="Right-click chip to change color" FontSize="10" Foreground="{ThemeResource AppTextSecondaryBrush}" VerticalAlignment="Center" />
                     </Grid>
 
-                    <!-- Curated Color Swatches -->
-                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
-                        <Button Width="20" Height="20" CornerRadius="10" Padding="0" Background="#005FB8" Click="OnColorSwatchClicked" Tag="#005FB8" ToolTipService.ToolTip="Blue" />
-                        <Button Width="20" Height="20" CornerRadius="10" Padding="0" Background="#107C41" Click="OnColorSwatchClicked" Tag="#107C41" ToolTipService.ToolTip="Emerald" />
-                        <Button Width="20" Height="20" CornerRadius="10" Padding="0" Background="#744DA9" Click="OnColorSwatchClicked" Tag="#744DA9" ToolTipService.ToolTip="Purple" />
-                        <Button Width="20" Height="20" CornerRadius="10" Padding="0" Background="#CA5010" Click="OnColorSwatchClicked" Tag="#CA5010" ToolTipService.ToolTip="Amber" />
-                        <Button Width="20" Height="20" CornerRadius="10" Padding="0" Background="#D13438" Click="OnColorSwatchClicked" Tag="#D13438" ToolTipService.ToolTip="Crimson" />
-                        <Button Width="20" Height="20" CornerRadius="10" Padding="0" Background="#0078D4" Click="OnColorSwatchClicked" Tag="#0078D4" ToolTipService.ToolTip="Cyan" />
-                        <Button Width="20" Height="20" CornerRadius="10" Padding="0" Background="#038387" Click="OnColorSwatchClicked" Tag="#038387" ToolTipService.ToolTip="Teal" />
-                        <Button Width="20" Height="20" CornerRadius="10" Padding="0" Background="#475569" Click="OnColorSwatchClicked" Tag="#475569" ToolTipService.ToolTip="Slate" />
-                    </StackPanel>
+                    <!-- Tag Input & Active Chips Row -->
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Add Tag Input Box -->
+                        <Grid Grid.Column="0" ColumnSpacing="4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="180" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox
+                                x:Name="DraftTagInputBox"
+                                Grid.Column="0"
+                                PlaceholderText="Type #tag..."
+                                Text="{x:Bind ViewModel.DraftTagInputText, Mode=TwoWay}"
+                                FontSize="12"
+                                KeyDown="OnDraftTagInputKeyDown" />
+                            <Button Grid.Column="1" Content="Add" Click="OnAddDraftTagButtonClicked" FontSize="11" Padding="8,5" />
+                        </Grid>
+
+                        <!-- Active Tag Chips Scrollable -->
+                        <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                            <ItemsControl ItemsSource="{x:Bind ViewModel.DraftTaskTags, Mode=OneWay}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal" Spacing="6" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="models:PlannerTag">
+                                        <Grid Margin="0,1,0,2">
+                                            <Border Margin="0,1.5,0,-1" CornerRadius="12" Background="{ThemeResource AppTagShadowBrush}" />
+                                            <Border
+                                                Background="{x:Bind ColorHex, Converter={StaticResource HexToBrushConverter}}"
+                                                CornerRadius="12"
+                                                Padding="8,3,4,3"
+                                                ToolTipService.ToolTip="Right-click to change color">
+                                                <Border.ContextFlyout>
+                                                    <Flyout>
+                                                        <StackPanel Spacing="6">
+                                                            <TextBlock Text="Choose Tag Color" FontSize="11" FontWeight="SemiBold" />
+                                                            <StackPanel Orientation="Horizontal" Spacing="5">
+                                                                <Button Width="20" Height="20" CornerRadius="10" Padding="0" Background="#005FB8" Click="OnDraftTagChipColorClicked" Tag="#005FB8" ToolTipService.ToolTip="Blue" />
+                                                                <Button Width="20" Height="20" CornerRadius="10" Padding="0" Background="#107C41" Click="OnDraftTagChipColorClicked" Tag="#107C41" ToolTipService.ToolTip="Emerald" />
+                                                                <Button Width="20" Height="20" CornerRadius="10" Padding="0" Background="#744DA9" Click="OnDraftTagChipColorClicked" Tag="#744DA9" ToolTipService.ToolTip="Purple" />
+                                                                <Button Width="20" Height="20" CornerRadius="10" Padding="0" Background="#CA5010" Click="OnDraftTagChipColorClicked" Tag="#CA5010" ToolTipService.ToolTip="Amber" />
+                                                                <Button Width="20" Height="20" CornerRadius="10" Padding="0" Background="#D13438" Click="OnDraftTagChipColorClicked" Tag="#D13438" ToolTipService.ToolTip="Crimson" />
+                                                                <Button Width="20" Height="20" CornerRadius="10" Padding="0" Background="#0078D4" Click="OnDraftTagChipColorClicked" Tag="#0078D4" ToolTipService.ToolTip="Cyan" />
+                                                                <Button Width="20" Height="20" CornerRadius="10" Padding="0" Background="#038387" Click="OnDraftTagChipColorClicked" Tag="#038387" ToolTipService.ToolTip="Teal" />
+                                                                <Button Width="20" Height="20" CornerRadius="10" Padding="0" Background="#475569" Click="OnDraftTagChipColorClicked" Tag="#475569" ToolTipService.ToolTip="Slate" />
+                                                            </StackPanel>
+                                                        </StackPanel>
+                                                    </Flyout>
+                                                </Border.ContextFlyout>
+                                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                                    <TextBlock Text="{x:Bind Name}" FontSize="11" FontWeight="SemiBold" Foreground="White" VerticalAlignment="Center" />
+                                                    <Button Width="18" Height="18" Padding="0" Background="Transparent" BorderThickness="0" Click="OnRemoveDraftTagClicked" ToolTipService.ToolTip="Remove tag">
+                                                        <FontIcon Glyph="&#xE711;" FontSize="9" Foreground="White" Opacity="0.8" />
+                                                    </Button>
+                                                </StackPanel>
+                                            </Border>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Grid>
                 </StackPanel>
 
-                <!-- Notes Field -->
-                <TextBox
-                    Header="Notes (Optional)"
-                    PlaceholderText="Add checklist notes or extra details..."
-                    AcceptsReturn="True"
-                    Height="60"
-                    Text="{x:Bind ViewModel.TaskDraftNotes, Mode=TwoWay}"
-                    FontSize="12" />
-            </StackPanel>
+                <!-- Two-Column Body: Left Settings | Right Description & Checklist -->
+                <Grid Grid.Row="1" ColumnSpacing="20">
+                    <Grid.ColumnDefinitions>
+                        <!-- Left: Settings (290px) -->
+                        <ColumnDefinition Width="290" />
+                        <!-- Right: Description & Checklists (Flex) -->
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- LEFT COLUMN: Settings -->
+                    <StackPanel Grid.Column="0" Spacing="10">
+                        <Grid Margin="0,1,0,3">
+                            <Border Margin="0,2,0,-1.5" CornerRadius="8" Background="{ThemeResource AppCardShadowBrush}" />
+                            <Border Background="{ThemeResource AppCardBackgroundBrush}" BorderBrush="{ThemeResource AppCardBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12">
+                                <StackPanel Spacing="10">
+                                    <TextBlock Text="Settings" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource AppTextPrimaryBrush}" />
+
+                                    <!-- Section -->
+                                    <ComboBox
+                                        Header="Section"
+                                        HorizontalAlignment="Stretch"
+                                        SelectedIndex="0"
+                                        SelectionChanged="OnModalSectionChanged">
+                                        <ComboBoxItem Content="Morning" />
+                                        <ComboBoxItem Content="Afternoon" />
+                                        <ComboBoxItem Content="Evening" />
+                                        <ComboBoxItem Content="Inbox" />
+                                    </ComboBox>
+
+                                    <!-- Due Date -->
+                                    <CalendarDatePicker
+                                        Header="Due Date"
+                                        HorizontalAlignment="Stretch"
+                                        Date="{x:Bind ViewModel.TaskDraftDueDate, Mode=TwoWay}"
+                                        PlaceholderText="Pick date" />
+
+                                    <!-- Duration -->
+                                    <ComboBox
+                                        Header="Duration"
+                                        HorizontalAlignment="Stretch"
+                                        Text="{x:Bind ViewModel.TaskDraftDuration, Mode=TwoWay}"
+                                        IsEditable="True"
+                                        PlaceholderText="e.g. 15m, 30m">
+                                        <ComboBoxItem Content="15m" />
+                                        <ComboBoxItem Content="30m" />
+                                        <ComboBoxItem Content="45m" />
+                                        <ComboBoxItem Content="1h" />
+                                        <ComboBoxItem Content="2h" />
+                                    </ComboBox>
+
+                                    <!-- Schedule Presets -->
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="Schedule Presets" FontSize="11" Foreground="{ThemeResource AppTextSecondaryBrush}" />
+                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                            <Button Padding="6,2" FontSize="10" CornerRadius="4" Content="Today" Click="OnSchedulePresetTodayClicked" />
+                                            <Button Padding="6,2" FontSize="10" CornerRadius="4" Content="Tomorrow" Click="OnSchedulePresetTomorrowClicked" />
+                                            <Button Padding="6,2" FontSize="10" CornerRadius="4" Content="9:00 AM" Click="OnSchedulePresetMorningClicked" />
+                                            <Button Padding="6,2" FontSize="10" CornerRadius="4" Content="2:00 PM" Click="OnSchedulePresetAfternoonClicked" />
+                                        </StackPanel>
+                                    </StackPanel>
+
+                                    <!-- List / Project (No "+ New", shows "Non Existent" if empty) -->
+                                    <ComboBox
+                                        Header="List / Project"
+                                        HorizontalAlignment="Stretch"
+                                        ItemsSource="{x:Bind ViewModel.Projects, Mode=OneWay}"
+                                        DisplayMemberPath="Name"
+                                        SelectedValuePath="Id"
+                                        SelectedValue="{x:Bind ViewModel.TaskDraftProjectId, Mode=TwoWay}"
+                                        PlaceholderText="{x:Bind ViewModel.ProjectPlaceholderText, Mode=OneWay}" />
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </StackPanel>
+
+                    <!-- RIGHT COLUMN: Description & Checklist -->
+                    <StackPanel Grid.Column="1" Spacing="10">
+                        <!-- Description / Notes -->
+                        <TextBox
+                            Header="Description"
+                            PlaceholderText="Extra details or description..."
+                            AcceptsReturn="True"
+                            Height="90"
+                            Text="{x:Bind ViewModel.TaskDraftNotes, Mode=TwoWay}"
+                            FontSize="12" />
+
+                        <!-- Checklist / Subtasks -->
+                        <Grid Margin="0,1,0,3">
+                            <Border Margin="0,2,0,-1.5" CornerRadius="8" Background="{ThemeResource AppCardShadowBrush}" />
+                            <Border Background="{ThemeResource AppCardBackgroundBrush}" BorderBrush="{ThemeResource AppCardBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12">
+                                <StackPanel Spacing="8">
+                                    <TextBlock Text="Checklists &amp; Subtasks" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource AppTextPrimaryBrush}" />
+
+                                    <!-- Add Subtask Input -->
+                                    <Grid ColumnSpacing="6">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox
+                                            x:Name="DraftSubtaskInputBox"
+                                            Grid.Column="0"
+                                            PlaceholderText="Add checklist item and press Enter..."
+                                            Text="{x:Bind ViewModel.DraftSubtaskInputText, Mode=TwoWay}"
+                                            FontSize="12"
+                                            KeyDown="OnDraftSubtaskInputKeyDown" />
+                                        <Button Grid.Column="1" Content="Add Item" Click="OnAddDraftSubtaskButtonClicked" FontSize="11" Padding="10,5" />
+                                    </Grid>
+
+                                    <!-- Subtasks Interactive List -->
+                                    <ScrollViewer MaxHeight="140" VerticalScrollBarVisibility="Auto">
+                                        <ItemsControl ItemsSource="{x:Bind ViewModel.DraftSubtasks, Mode=OneWay}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="models:PlannerSubTask">
+                                                    <Grid Margin="0,3" ColumnSpacing="8">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto" />
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <CheckBox Grid.Column="0" IsChecked="{x:Bind IsCompleted, Mode=TwoWay}" MinWidth="24" Padding="0" VerticalAlignment="Center" />
+                                                        <TextBlock Grid.Column="1" Text="{x:Bind Title}" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                                        <Button Grid.Column="2" Width="20" Height="20" Padding="0" Background="Transparent" BorderThickness="0" Click="OnRemoveDraftSubtaskClicked" ToolTipService.ToolTip="Remove item">
+                                                            <FontIcon Glyph="&#xE711;" FontSize="10" Foreground="{ThemeResource AppTextSecondaryBrush}" />
+                                                        </Button>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </StackPanel>
+                </Grid>
+            </Grid>
         </ContentDialog>
 
-        <!-- Edit Task Modal Dialog -->
+        <!-- Edit Task Modal Dialog (Rectangular Widescreen) -->
         <ContentDialog
             x:Name="EditTaskModalDialog"
             Title="Edit Task"
@@ -1095,123 +1552,255 @@
             CloseButtonText="Cancel"
             DefaultButton="Primary"
             PrimaryButtonClick="OnEditTaskConfirmed">
-            <StackPanel Spacing="12" Margin="0,10,0,0" MinWidth="380">
-                <!-- Task Title -->
-                <TextBox
-                    x:Name="EditTaskTitleBox"
-                    Header="Title"
-                    PlaceholderText="Task title"
-                    Text="{x:Bind ViewModel.EditTaskTitle, Mode=TwoWay}"
-                    FontSize="13" />
+            <ContentDialog.Resources>
+                <x:Double x:Key="ContentDialogMaxWidth">820</x:Double>
+                <x:Double x:Key="ContentDialogMaxHeight">660</x:Double>
+            </ContentDialog.Resources>
+            <Grid Width="720" RowSpacing="12" Margin="0,6,0,0">
+                <Grid.RowDefinitions>
+                    <!-- Row 0: Full-width Header: Title & Tags -->
+                    <RowDefinition Height="Auto" />
+                    <!-- Row 1: Two Columns: Left (Settings) and Right (Description & Checklists) -->
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
 
-                <!-- Section & Date row -->
-                <Grid ColumnSpacing="10">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
+                <!-- Full-Width Header: Title & Tag System -->
+                <StackPanel Grid.Row="0" Spacing="8">
+                    <!-- Title -->
+                    <TextBox
+                        x:Name="EditTaskTitleBox"
+                        Header="Title"
+                        PlaceholderText="Task title"
+                        Text="{x:Bind ViewModel.EditTaskTitle, Mode=TwoWay}"
+                        FontSize="14"
+                        FontWeight="SemiBold" />
 
-                    <ComboBox
-                        Grid.Column="0"
-                        Header="Section"
-                        HorizontalAlignment="Stretch"
-                        Text="{x:Bind ViewModel.EditTaskSection, Mode=TwoWay}"
-                        IsEditable="True">
-                        <ComboBoxItem Content="Morning" />
-                        <ComboBoxItem Content="Afternoon" />
-                        <ComboBoxItem Content="Evening" />
-                        <ComboBoxItem Content="Inbox" />
-                        <ComboBoxItem Content="Upcoming" />
-                        <ComboBoxItem Content="Anytime" />
-                        <ComboBoxItem Content="Someday" />
-                    </ComboBox>
-
-                    <CalendarDatePicker
-                        Grid.Column="1"
-                        Header="Due Date"
-                        HorizontalAlignment="Stretch"
-                        Date="{x:Bind ViewModel.EditTaskDueDate, Mode=TwoWay}"
-                        PlaceholderText="Pick date" />
-                </Grid>
-
-                <!-- Project & Duration Row -->
-                <Grid ColumnSpacing="10">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-
-                    <ComboBox
-                        Grid.Column="0"
-                        Header="List / Project"
-                        HorizontalAlignment="Stretch"
-                        ItemsSource="{x:Bind ViewModel.Projects, Mode=OneWay}"
-                        DisplayMemberPath="Name"
-                        SelectedValuePath="Id"
-                        SelectedValue="{x:Bind ViewModel.EditTaskProjectId, Mode=TwoWay}"
-                        PlaceholderText="None" />
-
-                    <ComboBox
-                        Grid.Column="1"
-                        Header="Duration"
-                        HorizontalAlignment="Stretch"
-                        Text="{x:Bind ViewModel.EditTaskDuration, Mode=TwoWay}"
-                        IsEditable="True"
-                        PlaceholderText="e.g. 15m, 30m">
-                        <ComboBoxItem Content="15m" />
-                        <ComboBoxItem Content="30m" />
-                        <ComboBoxItem Content="45m" />
-                        <ComboBoxItem Content="1h" />
-                        <ComboBoxItem Content="2h" />
-                    </ComboBox>
-                </Grid>
-
-                <!-- Tag & Color Row -->
-                <StackPanel Spacing="4">
-                    <TextBlock Text="Tag &amp; Color" FontSize="11" Foreground="{ThemeResource AppTextSecondaryBrush}" />
-                    <Grid ColumnSpacing="8">
+                    <!-- Tags Header & Quick Presets -->
+                    <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <TextBox
-                            Grid.Column="0"
-                            PlaceholderText="e.g. #Work, #Personal, #Dev"
-                            Text="{x:Bind ViewModel.EditTaskTag, Mode=TwoWay}"
-                            FontSize="12" />
-                        <Border
-                            Grid.Column="1"
-                            Width="26"
-                            Height="26"
-                            CornerRadius="13"
-                            VerticalAlignment="Center"
-                            BorderBrush="{ThemeResource AppCardBorderBrush}"
-                            BorderThickness="1"
-                            Background="{x:Bind ViewModel.EditTaskTagColor, Mode=OneWay, Converter={StaticResource HexToBrushConverter}}" />
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                            <TextBlock Text="Tags (#):" FontSize="11" FontWeight="SemiBold" Foreground="{ThemeResource AppTextSecondaryBrush}" VerticalAlignment="Center" />
+                            <Button Content="#Work" Padding="8,2" FontSize="11" CornerRadius="10" Click="OnEditQuickTagWorkClicked" Background="{ThemeResource AppCardBackgroundBrush}" BorderBrush="{ThemeResource AppCardBorderBrush}" BorderThickness="1" Foreground="{ThemeResource AppTextPrimaryBrush}" />
+                            <Button Content="#Personal" Padding="8,2" FontSize="11" CornerRadius="10" Click="OnEditQuickTagPersonalClicked" Background="{ThemeResource AppCardBackgroundBrush}" BorderBrush="{ThemeResource AppCardBorderBrush}" BorderThickness="1" Foreground="{ThemeResource AppTextPrimaryBrush}" />
+                            <Button Content="#Focus" Padding="8,2" FontSize="11" CornerRadius="10" Click="OnEditQuickTagFocusClicked" Background="{ThemeResource AppCardBackgroundBrush}" BorderBrush="{ThemeResource AppCardBorderBrush}" BorderThickness="1" Foreground="{ThemeResource AppTextPrimaryBrush}" />
+                        </StackPanel>
+                        <TextBlock Grid.Column="1" Text="Right-click chip to change color" FontSize="10" Foreground="{ThemeResource AppTextSecondaryBrush}" VerticalAlignment="Center" />
                     </Grid>
 
-                    <!-- Curated Color Swatches -->
-                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
-                        <Button Width="20" Height="20" CornerRadius="10" Padding="0" Background="#005FB8" Click="OnEditColorSwatchClicked" Tag="#005FB8" ToolTipService.ToolTip="Blue" />
-                        <Button Width="20" Height="20" CornerRadius="10" Padding="0" Background="#107C41" Click="OnEditColorSwatchClicked" Tag="#107C41" ToolTipService.ToolTip="Emerald" />
-                        <Button Width="20" Height="20" CornerRadius="10" Padding="0" Background="#744DA9" Click="OnEditColorSwatchClicked" Tag="#744DA9" ToolTipService.ToolTip="Purple" />
-                        <Button Width="20" Height="20" CornerRadius="10" Padding="0" Background="#CA5010" Click="OnEditColorSwatchClicked" Tag="#CA5010" ToolTipService.ToolTip="Amber" />
-                        <Button Width="20" Height="20" CornerRadius="10" Padding="0" Background="#D13438" Click="OnEditColorSwatchClicked" Tag="#D13438" ToolTipService.ToolTip="Crimson" />
-                        <Button Width="20" Height="20" CornerRadius="10" Padding="0" Background="#0078D4" Click="OnEditColorSwatchClicked" Tag="#0078D4" ToolTipService.ToolTip="Cyan" />
-                        <Button Width="20" Height="20" CornerRadius="10" Padding="0" Background="#038387" Click="OnEditColorSwatchClicked" Tag="#038387" ToolTipService.ToolTip="Teal" />
-                        <Button Width="20" Height="20" CornerRadius="10" Padding="0" Background="#475569" Click="OnEditColorSwatchClicked" Tag="#475569" ToolTipService.ToolTip="Slate" />
-                    </StackPanel>
+                    <!-- Tag Input & Active Chips Row -->
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Add Tag Input Box -->
+                        <Grid Grid.Column="0" ColumnSpacing="4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="180" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox
+                                x:Name="EditTagInputBox"
+                                Grid.Column="0"
+                                PlaceholderText="Type #tag..."
+                                Text="{x:Bind ViewModel.EditTagInputText, Mode=TwoWay}"
+                                FontSize="12"
+                                KeyDown="OnEditTagInputKeyDown" />
+                            <Button Grid.Column="1" Content="Add" Click="OnAddEditTagButtonClicked" FontSize="11" Padding="8,5" />
+                        </Grid>
+
+                        <!-- Active Tag Chips Scrollable -->
+                        <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                            <ItemsControl ItemsSource="{x:Bind ViewModel.EditTaskTags, Mode=OneWay}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal" Spacing="6" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="models:PlannerTag">
+                                        <Grid Margin="0,1,0,2">
+                                            <Border Margin="0,1.5,0,-1" CornerRadius="12" Background="{ThemeResource AppTagShadowBrush}" />
+                                            <Border
+                                                Background="{x:Bind ColorHex, Converter={StaticResource HexToBrushConverter}}"
+                                                CornerRadius="12"
+                                                Padding="8,3,4,3"
+                                                ToolTipService.ToolTip="Right-click to change color">
+                                                <Border.ContextFlyout>
+                                                    <Flyout>
+                                                        <StackPanel Spacing="6">
+                                                            <TextBlock Text="Choose Tag Color" FontSize="11" FontWeight="SemiBold" />
+                                                            <StackPanel Orientation="Horizontal" Spacing="5">
+                                                                <Button Width="20" Height="20" CornerRadius="10" Padding="0" Background="#005FB8" Click="OnEditTagChipColorClicked" Tag="#005FB8" ToolTipService.ToolTip="Blue" />
+                                                                <Button Width="20" Height="20" CornerRadius="10" Padding="0" Background="#107C41" Click="OnEditTagChipColorClicked" Tag="#107C41" ToolTipService.ToolTip="Emerald" />
+                                                                <Button Width="20" Height="20" CornerRadius="10" Padding="0" Background="#744DA9" Click="OnEditTagChipColorClicked" Tag="#744DA9" ToolTipService.ToolTip="Purple" />
+                                                                <Button Width="20" Height="20" CornerRadius="10" Padding="0" Background="#CA5010" Click="OnEditTagChipColorClicked" Tag="#CA5010" ToolTipService.ToolTip="Amber" />
+                                                                <Button Width="20" Height="20" CornerRadius="10" Padding="0" Background="#D13438" Click="OnEditTagChipColorClicked" Tag="#D13438" ToolTipService.ToolTip="Crimson" />
+                                                                <Button Width="20" Height="20" CornerRadius="10" Padding="0" Background="#0078D4" Click="OnEditTagChipColorClicked" Tag="#0078D4" ToolTipService.ToolTip="Cyan" />
+                                                                <Button Width="20" Height="20" CornerRadius="10" Padding="0" Background="#038387" Click="OnEditTagChipColorClicked" Tag="#038387" ToolTipService.ToolTip="Teal" />
+                                                                <Button Width="20" Height="20" CornerRadius="10" Padding="0" Background="#475569" Click="OnEditTagChipColorClicked" Tag="#475569" ToolTipService.ToolTip="Slate" />
+                                                            </StackPanel>
+                                                        </StackPanel>
+                                                    </Flyout>
+                                                </Border.ContextFlyout>
+                                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                                    <TextBlock Text="{x:Bind Name}" FontSize="11" FontWeight="SemiBold" Foreground="White" VerticalAlignment="Center" />
+                                                    <Button Width="18" Height="18" Padding="0" Background="Transparent" BorderThickness="0" Click="OnRemoveEditTagClicked" ToolTipService.ToolTip="Remove tag">
+                                                        <FontIcon Glyph="&#xE711;" FontSize="9" Foreground="White" Opacity="0.8" />
+                                                    </Button>
+                                                </StackPanel>
+                                            </Border>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Grid>
                 </StackPanel>
 
-                <!-- Notes Field -->
-                <TextBox
-                    Header="Notes (Optional)"
-                    PlaceholderText="Add checklist notes or extra details..."
-                    AcceptsReturn="True"
-                    Height="60"
-                    Text="{x:Bind ViewModel.EditTaskNotes, Mode=TwoWay}"
-                    FontSize="12" />
-            </StackPanel>
+                <!-- Two-Column Body: Left Settings | Right Description & Checklist -->
+                <Grid Grid.Row="1" ColumnSpacing="20">
+                    <Grid.ColumnDefinitions>
+                        <!-- Left: Settings (290px) -->
+                        <ColumnDefinition Width="290" />
+                        <!-- Right: Description & Checklists (Flex) -->
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- LEFT COLUMN: Settings -->
+                    <StackPanel Grid.Column="0" Spacing="10">
+                        <Grid Margin="0,1,0,3">
+                            <Border Margin="0,2,0,-1.5" CornerRadius="8" Background="{ThemeResource AppCardShadowBrush}" />
+                            <Border Background="{ThemeResource AppCardBackgroundBrush}" BorderBrush="{ThemeResource AppCardBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12">
+                                <StackPanel Spacing="10">
+                                    <TextBlock Text="Settings" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource AppTextPrimaryBrush}" />
+
+                                    <!-- Section -->
+                                    <ComboBox
+                                        Header="Section"
+                                        HorizontalAlignment="Stretch"
+                                        Text="{x:Bind ViewModel.EditTaskSection, Mode=TwoWay}"
+                                        IsEditable="True">
+                                        <ComboBoxItem Content="Morning" />
+                                        <ComboBoxItem Content="Afternoon" />
+                                        <ComboBoxItem Content="Evening" />
+                                        <ComboBoxItem Content="Inbox" />
+                                        <ComboBoxItem Content="Upcoming" />
+                                        <ComboBoxItem Content="Anytime" />
+                                        <ComboBoxItem Content="Someday" />
+                                    </ComboBox>
+
+                                    <!-- Due Date -->
+                                    <CalendarDatePicker
+                                        Header="Due Date"
+                                        HorizontalAlignment="Stretch"
+                                        Date="{x:Bind ViewModel.EditTaskDueDate, Mode=TwoWay}"
+                                        PlaceholderText="Pick date" />
+
+                                    <!-- Duration -->
+                                    <ComboBox
+                                        Header="Duration"
+                                        HorizontalAlignment="Stretch"
+                                        Text="{x:Bind ViewModel.EditTaskDuration, Mode=TwoWay}"
+                                        IsEditable="True"
+                                        PlaceholderText="e.g. 15m, 30m">
+                                        <ComboBoxItem Content="15m" />
+                                        <ComboBoxItem Content="30m" />
+                                        <ComboBoxItem Content="45m" />
+                                        <ComboBoxItem Content="1h" />
+                                        <ComboBoxItem Content="2h" />
+                                    </ComboBox>
+
+                                    <!-- Schedule Presets -->
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="Schedule Presets" FontSize="11" Foreground="{ThemeResource AppTextSecondaryBrush}" />
+                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                            <Button Padding="6,2" FontSize="10" CornerRadius="4" Content="Today" Click="OnEditSchedulePresetTodayClicked" />
+                                            <Button Padding="6,2" FontSize="10" CornerRadius="4" Content="Tomorrow" Click="OnEditSchedulePresetTomorrowClicked" />
+                                            <Button Padding="6,2" FontSize="10" CornerRadius="4" Content="9:00 AM" Click="OnEditSchedulePresetMorningClicked" />
+                                            <Button Padding="6,2" FontSize="10" CornerRadius="4" Content="2:00 PM" Click="OnEditSchedulePresetAfternoonClicked" />
+                                        </StackPanel>
+                                    </StackPanel>
+
+                                    <!-- List / Project (No "+ New", shows "Non Existent" if empty) -->
+                                    <ComboBox
+                                        Header="List / Project"
+                                        HorizontalAlignment="Stretch"
+                                        ItemsSource="{x:Bind ViewModel.Projects, Mode=OneWay}"
+                                        DisplayMemberPath="Name"
+                                        SelectedValuePath="Id"
+                                        SelectedValue="{x:Bind ViewModel.EditTaskProjectId, Mode=TwoWay}"
+                                        PlaceholderText="{x:Bind ViewModel.ProjectPlaceholderText, Mode=OneWay}" />
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </StackPanel>
+
+                    <!-- RIGHT COLUMN: Description & Checklist -->
+                    <StackPanel Grid.Column="1" Spacing="10">
+                        <!-- Description / Notes -->
+                        <TextBox
+                            Header="Description"
+                            PlaceholderText="Extra details or description..."
+                            AcceptsReturn="True"
+                            Height="90"
+                            Text="{x:Bind ViewModel.EditTaskNotes, Mode=TwoWay}"
+                            FontSize="12" />
+
+                        <!-- Checklist / Subtasks -->
+                        <Grid Margin="0,1,0,3">
+                            <Border Margin="0,2,0,-1.5" CornerRadius="8" Background="{ThemeResource AppCardShadowBrush}" />
+                            <Border Background="{ThemeResource AppCardBackgroundBrush}" BorderBrush="{ThemeResource AppCardBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12">
+                                <StackPanel Spacing="8">
+                                    <TextBlock Text="Checklists &amp; Subtasks" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource AppTextPrimaryBrush}" />
+
+                                    <!-- Add Subtask Input -->
+                                    <Grid ColumnSpacing="6">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox
+                                            x:Name="EditSubtaskInputBox"
+                                            Grid.Column="0"
+                                            PlaceholderText="Add checklist item and press Enter..."
+                                            Text="{x:Bind ViewModel.EditSubtaskInputText, Mode=TwoWay}"
+                                            FontSize="12"
+                                            KeyDown="OnEditSubtaskInputKeyDown" />
+                                        <Button Grid.Column="1" Content="Add Item" Click="OnAddEditSubtaskButtonClicked" FontSize="11" Padding="10,5" />
+                                    </Grid>
+
+                                    <!-- Subtasks Interactive List -->
+                                    <ScrollViewer MaxHeight="140" VerticalScrollBarVisibility="Auto">
+                                        <ItemsControl ItemsSource="{x:Bind ViewModel.EditSubtasks, Mode=OneWay}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="models:PlannerSubTask">
+                                                    <Grid Margin="0,3" ColumnSpacing="8">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto" />
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <CheckBox Grid.Column="0" IsChecked="{x:Bind IsCompleted, Mode=TwoWay}" MinWidth="24" Padding="0" VerticalAlignment="Center" />
+                                                        <TextBlock Grid.Column="1" Text="{x:Bind Title}" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                                        <Button Grid.Column="2" Width="20" Height="20" Padding="0" Background="Transparent" BorderThickness="0" Click="OnRemoveEditSubtaskClicked" ToolTipService.ToolTip="Remove item">
+                                                            <FontIcon Glyph="&#xE711;" FontSize="10" Foreground="{ThemeResource AppTextSecondaryBrush}" />
+                                                        </Button>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </StackPanel>
+                </Grid>
+            </Grid>
         </ContentDialog>
     </Grid>
 </Page>

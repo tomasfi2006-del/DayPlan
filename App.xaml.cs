@@ -52,8 +52,8 @@ public partial class App : Application
         var services = new ServiceCollection();
 
         // Register core services
-        services.AddSingleton<IPlannerDataService, PlannerDataService>();
         services.AddSingleton<ISettingsService, SettingsService>();
+        services.AddSingleton<IPlannerDataService, PlannerDataService>();
 
         // Register ViewModels
         services.AddSingleton<MainViewModel>();
@@ -63,11 +63,12 @@ public partial class App : Application
 
     protected override async void OnLaunched(LaunchActivatedEventArgs args)
     {
-        Window = new MainWindow();
         DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
 
         var settingsService = Services.GetRequiredService<ISettingsService>();
         var settings = await settingsService.LoadSettingsAsync();
+
+        Window = new MainWindow(settings.Theme);
 
         if (Window.Content is FrameworkElement root)
         {

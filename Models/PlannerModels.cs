@@ -67,11 +67,14 @@ public partial class PlannerTask : ObservableObject
     public partial string TagColorHex { get; set; } = "#005FB8";
 
     [ObservableProperty]
+    public partial ObservableCollection<PlannerTag> Tags { get; set; } = new();
+
+    [ObservableProperty]
     public partial ObservableCollection<PlannerSubTask> Subtasks { get; set; } = new();
 
     public bool HasNotes => !string.IsNullOrWhiteSpace(Notes);
     public bool HasProject => !string.IsNullOrWhiteSpace(ProjectName);
-    public bool HasTag => !string.IsNullOrWhiteSpace(PrimaryTag);
+    public bool HasTag => !string.IsNullOrWhiteSpace(PrimaryTag) || (Tags != null && Tags.Count > 0);
     public bool HasDueTime => !string.IsNullOrWhiteSpace(DueTimeText);
     public bool HasDuration => !string.IsNullOrWhiteSpace(DurationText);
     public bool HasSubtasks => Subtasks != null && Subtasks.Count > 0;
@@ -160,5 +163,13 @@ public partial class PlannerTag : ObservableObject
     [ObservableProperty]
     [property: System.Text.Json.Serialization.JsonIgnore]
     public partial bool IsSelected { get; set; }
+}
+
+public partial class ProjectAreaGroup : ObservableObject
+{
+    [ObservableProperty]
+    public partial string AreaName { get; set; } = string.Empty;
+
+    public ObservableCollection<PlannerProject> Projects { get; } = new();
 }
 

@@ -124,6 +124,27 @@ public partial class MainViewModel : ObservableObject
     public partial bool HasNoProjects { get; set; } = true;
 
     [ObservableProperty]
+    public partial bool HasAnyProjects { get; set; }
+
+    [ObservableProperty]
+    public partial string ProjectPlaceholderText { get; set; } = "Non Existent";
+
+    [ObservableProperty]
+    public partial bool HasAreas { get; set; }
+
+    [ObservableProperty]
+    public partial string DraftTagInputText { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial string EditTagInputText { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial string DraftSubtaskInputText { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial string EditSubtaskInputText { get; set; } = string.Empty;
+
+    [ObservableProperty]
     public partial bool IsSidebarExpanded { get; set; } = true;
 
     [ObservableProperty]
@@ -199,7 +220,31 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     public partial string WeeklyTotalTasksText { get; set; } = "0 Tasks Total";
 
+    [ObservableProperty]
+    public partial string CurrentStoragePath { get; set; } = string.Empty;
+
     public ObservableCollection<PlannerTag> AvailableTags { get; } = new();
+    public ObservableCollection<PlannerTag> FilteredTags { get; } = new();
+
+    [ObservableProperty]
+    public partial string TagDropdownSearchText { get; set; } = string.Empty;
+
+    public string TagFilterButtonText => string.IsNullOrEmpty(TagFilter) || TagFilter == "All" ? "All Tags" : TagFilter;
+    public bool HasActiveTagFilter => !string.IsNullOrEmpty(TagFilter) && TagFilter != "All";
+
+    public bool IsDarkTheme => SelectedThemeIndex switch
+    {
+        0 => false,
+        1 => true,
+        _ => Application.Current.RequestedTheme == ApplicationTheme.Dark
+    };
+
+    public ElementTheme CurrentTheme => SelectedThemeIndex switch
+    {
+        0 => ElementTheme.Light,
+        1 => ElementTheme.Dark,
+        _ => ElementTheme.Default
+    };
 
     public ObservableCollection<PlannerTask> MorningTasks { get; } = new();
     public ObservableCollection<PlannerTask> AfternoonTasks { get; } = new();
@@ -209,6 +254,12 @@ public partial class MainViewModel : ObservableObject
     public ObservableCollection<PlannerProject> Projects { get; } = new();
     public ObservableCollection<PlannerProject> WorkProjects { get; } = new();
     public ObservableCollection<PlannerProject> PersonalProjects { get; } = new();
+    public ObservableCollection<ProjectAreaGroup> AreaGroups { get; } = new();
+
+    public ObservableCollection<PlannerTag> DraftTaskTags { get; } = new();
+    public ObservableCollection<PlannerTag> EditTaskTags { get; } = new();
+    public ObservableCollection<PlannerSubTask> DraftSubtasks { get; } = new();
+    public ObservableCollection<PlannerSubTask> EditSubtasks { get; } = new();
 
     public ObservableCollection<CalendarHorizonEvent> HorizonEvents { get; } = new();
     public ObservableCollection<WeeklyDayLoad> WeeklyLoads { get; } = new();
@@ -230,6 +281,7 @@ public partial class MainViewModel : ObservableObject
         ProfilePlan = settings.ProfilePlan;
         AvatarUri = settings.AvatarPath;
         SelectedThemeIndex = settings.Theme == ElementTheme.Light ? 0 : (settings.Theme == ElementTheme.Dark ? 1 : 2);
+        CurrentStoragePath = _settingsService.CurrentStorageDirectory;
 
         await LoadDataAsync();
     }
@@ -270,11 +322,52 @@ public partial class MainViewModel : ObservableObject
         HasWorkProjects = WorkProjects.Count > 0;
         HasPersonalProjects = PersonalProjects.Count > 0;
         HasNoProjects = Projects.Count == 0;
+        HasAnyProjects = Projects.Count > 0;
+        ProjectPlaceholderText = HasAnyProjects ? "None" : "Non Existent";
+
+        AreaGroups.Clear();
+        var areasList = (_currentPackage.Areas != null)
+            ? new System.Collections.Generic.List<string>(_currentPackage.Areas)
+            : new System.Collections.Generic.List<string>();
+
+        foreach (var p in _currentPackage.Projects)
+        {
+            if (!string.IsNullOrWhiteSpace(p.Area) && !areasList.Contains(p.Area, StringComparer.OrdinalIgnoreCase))
+            {
+                areasList.Add(p.Area);
+            }
+        }
+
+        foreach (var area in areasList)
+        {
+            var group = new ProjectAreaGroup { AreaName = area };
+            foreach (var p in _currentPackage.Projects.Where(proj => string.Equals(proj.Area, area, StringComparison.OrdinalIgnoreCase)))
+            {
+                group.Projects.Add(p);
+            }
+            AreaGroups.Add(group);
+        }
+
+        HasAreas = AreaGroups.Count > 0;
+
+        // Ensure default tags #Work, #Personal, #Focus exist if tag list is empty
+        if (_currentPackage.Tags == null || _currentPackage.Tags.Count == 0)
+        {
+            _currentPackage.Tags = new System.Collections.Generic.List<PlannerTag>
+            {
+                new() { Name = "#Work", ColorHex = "#005FB8" },
+                new() { Name = "#Personal", ColorHex = "#107C41" },
+                new() { Name = "#Focus", ColorHex = "#0078D4" }
+            };
+        }
 
         AvailableTags.Clear();
+        FilteredTags.Clear();
         foreach (var tag in _currentPackage.Tags)
         {
+            tag.IsSelected = string.Equals(tag.Name, TagFilter, StringComparison.OrdinalIgnoreCase);
             AvailableTags.Add(tag);
+            FilteredTags.Add(tag);
         }
 
         // 1. Populate Live Today's Horizon from timed tasks
@@ -432,7 +525,9 @@ public partial class MainViewModel : ObservableObject
         // 3. Tag Filter
         if (TagFilter != "All")
         {
-            sourceTasks = sourceTasks.Where(t => t.PrimaryTag.Equals(TagFilter, StringComparison.OrdinalIgnoreCase));
+            sourceTasks = sourceTasks.Where(t =>
+                t.PrimaryTag.Equals(TagFilter, StringComparison.OrdinalIgnoreCase) ||
+                t.Tags.Any(tg => tg.Name.Equals(TagFilter, StringComparison.OrdinalIgnoreCase)));
         }
 
         // 4. Search Filter
@@ -520,7 +615,71 @@ public partial class MainViewModel : ObservableObject
             t.IsSelected = string.Equals(t.Name, TagFilter, StringComparison.OrdinalIgnoreCase);
         }
 
+        OnPropertyChanged(nameof(TagFilterButtonText));
+        OnPropertyChanged(nameof(HasActiveTagFilter));
         UpdateViewFilters();
+    }
+
+    public async Task AddNewFilterTagAsync(string name, string colorHex)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return;
+        string formatted = name.Trim();
+        if (!formatted.StartsWith('#')) formatted = "#" + formatted;
+        await _dataService.AddOrUpdateTagAsync(formatted, string.IsNullOrWhiteSpace(colorHex) ? "#005FB8" : colorHex);
+        await LoadDataAsync();
+    }
+
+    public async Task UpdateTagColorAsync(string name, string colorHex)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return;
+        await _dataService.AddOrUpdateTagAsync(name.Trim(), colorHex);
+        await LoadDataAsync();
+    }
+
+    [RelayCommand]
+    public async Task DeleteTagFilterAsync(string tagName)
+    {
+        if (string.IsNullOrWhiteSpace(tagName)) return;
+        await _dataService.DeleteTagAsync(tagName.Trim());
+        if (string.Equals(TagFilter, tagName.Trim(), StringComparison.OrdinalIgnoreCase))
+        {
+            TagFilter = "All";
+        }
+        await LoadDataAsync();
+    }
+
+    [RelayCommand]
+    public void AddTagToDraft(string tagName)
+    {
+        if (string.IsNullOrWhiteSpace(tagName)) return;
+        string formatted = tagName.Trim();
+        if (!formatted.StartsWith('#')) formatted = "#" + formatted;
+        if (!DraftTaskTags.Any(t => t.Name.Equals(formatted, StringComparison.OrdinalIgnoreCase)))
+        {
+            var existing = AvailableTags.FirstOrDefault(t => t.Name.Equals(formatted, StringComparison.OrdinalIgnoreCase));
+            DraftTaskTags.Add(new PlannerTag
+            {
+                Name = formatted,
+                ColorHex = existing?.ColorHex ?? "#005FB8"
+            });
+        }
+    }
+
+    [RelayCommand]
+    public void AddTagToEdit(string tagName)
+    {
+        if (string.IsNullOrWhiteSpace(tagName)) return;
+        string formatted = tagName.Trim();
+        if (!formatted.StartsWith('#')) formatted = "#" + formatted;
+        if (!EditTaskTags.Any(t => t.Name.Equals(formatted, StringComparison.OrdinalIgnoreCase)))
+        {
+            var existing = AvailableTags.FirstOrDefault(t => t.Name.Equals(formatted, StringComparison.OrdinalIgnoreCase));
+            EditTaskTags.Add(new PlannerTag
+            {
+                Name = formatted,
+                ColorHex = existing?.ColorHex ?? "#005FB8"
+            });
+        }
     }
 
     [RelayCommand]
@@ -622,6 +781,22 @@ public partial class MainViewModel : ObservableObject
         TaskDraftNotes = string.Empty;
         TaskDraftProjectId = IsProjectView && !string.IsNullOrEmpty(SelectedProjectId) ? SelectedProjectId : string.Empty;
         TaskDraftProjectName = IsProjectView ? SelectedProjectName : string.Empty;
+
+        DraftTaskTags.Clear();
+        DraftSubtasks.Clear();
+        DraftTagInputText = string.Empty;
+        DraftSubtaskInputText = string.Empty;
+
+        if (TagFilter != "All" && !string.IsNullOrWhiteSpace(TagFilter))
+        {
+            var existing = AvailableTags.FirstOrDefault(t => t.Name.Equals(TagFilter, StringComparison.OrdinalIgnoreCase));
+            DraftTaskTags.Add(new PlannerTag
+            {
+                Name = TagFilter,
+                ColorHex = existing?.ColorHex ?? "#005FB8"
+            });
+        }
+
         IsCreateTaskDialogOpen = true;
     }
 
@@ -656,18 +831,23 @@ public partial class MainViewModel : ObservableObject
             TaskDraftProjectName = string.Empty;
         }
 
+        string? primaryTag = DraftTaskTags.Count > 0 ? DraftTaskTags[0].Name : (!string.IsNullOrWhiteSpace(TaskDraftTag) ? TaskDraftTag.Trim() : null);
+        string primaryTagColor = DraftTaskTags.Count > 0 ? DraftTaskTags[0].ColorHex : TaskDraftTagColor;
+
         await _dataService.AddTaskWithDetailsAsync(
             TaskDraftTitle.Trim(),
             TaskDraftSection,
             date,
             TaskDraftDueTimeText,
             TaskDraftDuration,
-            TaskDraftTag?.Trim(),
-            TaskDraftTagColor,
+            primaryTag,
+            primaryTagColor,
             TaskDraftNotes,
             TaskDraftProjectId,
             TaskDraftProjectName,
-            projColor);
+            projColor,
+            DraftTaskTags,
+            DraftSubtasks);
 
         IsCreateTaskDialogOpen = false;
         await LoadDataAsync();
@@ -688,6 +868,32 @@ public partial class MainViewModel : ObservableObject
         EditTaskNotes = task.Notes;
         EditTaskProjectId = task.ProjectId;
         EditTaskProjectName = task.ProjectName;
+
+        EditTaskTags.Clear();
+        EditSubtasks.Clear();
+        EditTagInputText = string.Empty;
+        EditSubtaskInputText = string.Empty;
+
+        if (task.Tags != null && task.Tags.Count > 0)
+        {
+            foreach (var tg in task.Tags)
+            {
+                EditTaskTags.Add(new PlannerTag { Id = tg.Id, Name = tg.Name, ColorHex = tg.ColorHex });
+            }
+        }
+        else if (!string.IsNullOrWhiteSpace(task.PrimaryTag))
+        {
+            EditTaskTags.Add(new PlannerTag { Name = task.PrimaryTag, ColorHex = task.TagColorHex });
+        }
+
+        if (task.Subtasks != null && task.Subtasks.Count > 0)
+        {
+            foreach (var st in task.Subtasks)
+            {
+                EditSubtasks.Add(new PlannerSubTask { Id = st.Id, Title = st.Title, IsCompleted = st.IsCompleted });
+            }
+        }
+
         IsEditTaskDialogOpen = true;
     }
 
@@ -722,6 +928,9 @@ public partial class MainViewModel : ObservableObject
             EditTaskProjectName = string.Empty;
         }
 
+        string? primaryTag = EditTaskTags.Count > 0 ? EditTaskTags[0].Name : (!string.IsNullOrWhiteSpace(EditTaskTag) ? EditTaskTag.Trim() : null);
+        string primaryTagColor = EditTaskTags.Count > 0 ? EditTaskTags[0].ColorHex : EditTaskTagColor;
+
         await _dataService.UpdateTaskAsync(
             EditTaskId,
             EditTaskTitle.Trim(),
@@ -729,15 +938,156 @@ public partial class MainViewModel : ObservableObject
             date,
             EditTaskDueTimeText,
             EditTaskDuration,
-            EditTaskTag?.Trim(),
-            EditTaskTagColor,
+            primaryTag,
+            primaryTagColor,
             EditTaskNotes,
             EditTaskProjectId,
             EditTaskProjectName,
-            projColor);
+            projColor,
+            EditTaskTags,
+            EditSubtasks);
 
         IsEditTaskDialogOpen = false;
         await LoadDataAsync();
+    }
+
+    [RelayCommand]
+    public async Task CreateAreaAsync(string areaName)
+    {
+        if (string.IsNullOrWhiteSpace(areaName)) return;
+        await _dataService.AddAreaAsync(areaName.Trim());
+        await LoadDataAsync();
+    }
+
+    [RelayCommand]
+    public async Task DeleteAreaAsync(string areaName)
+    {
+        if (string.IsNullOrWhiteSpace(areaName)) return;
+        await _dataService.DeleteAreaAsync(areaName.Trim());
+        await LoadDataAsync();
+    }
+
+    public async Task CreateListInAreaAsync(string areaName, string listName)
+    {
+        if (string.IsNullOrWhiteSpace(listName)) return;
+        string safeArea = string.IsNullOrWhiteSpace(areaName) ? "Work" : areaName.Trim();
+        var proj = await _dataService.AddProjectAsync(listName.Trim(), safeArea, "#005FB8");
+        await LoadDataAsync();
+        SelectProject(proj);
+    }
+
+    public async Task<PlannerProject?> CreateProjectQuickAsync(string name, string area = "Work")
+    {
+        if (string.IsNullOrWhiteSpace(name)) return null;
+        var proj = await _dataService.AddProjectAsync(name.Trim(), string.IsNullOrWhiteSpace(area) ? "Work" : area.Trim(), "#005FB8");
+        await LoadDataAsync();
+        return proj;
+    }
+
+    [RelayCommand]
+    public void AddDraftTag(string tagName)
+    {
+        if (string.IsNullOrWhiteSpace(tagName)) return;
+        string tag = tagName.Trim();
+        if (!tag.StartsWith("#")) tag = "#" + tag;
+        if (!DraftTaskTags.Any(t => t.Name.Equals(tag, StringComparison.OrdinalIgnoreCase)))
+        {
+            var existing = AvailableTags.FirstOrDefault(t => t.Name.Equals(tag, StringComparison.OrdinalIgnoreCase));
+            string color = existing?.ColorHex ?? "#005FB8";
+            DraftTaskTags.Add(new PlannerTag { Name = tag, ColorHex = color });
+        }
+        DraftTagInputText = string.Empty;
+    }
+
+    [RelayCommand]
+    public void RemoveDraftTag(PlannerTag tag)
+    {
+        if (tag != null) DraftTaskTags.Remove(tag);
+    }
+
+    public void UpdateDraftTagColor(PlannerTag tag, string colorHex)
+    {
+        if (tag == null || string.IsNullOrWhiteSpace(colorHex)) return;
+        tag.ColorHex = colorHex;
+        _ = _dataService.AddOrUpdateTagAsync(tag.Name, colorHex);
+    }
+
+    [RelayCommand]
+    public void AddDraftSubtask(string title)
+    {
+        if (string.IsNullOrWhiteSpace(title)) return;
+        DraftSubtasks.Add(new PlannerSubTask
+        {
+            Id = Guid.NewGuid().ToString("N"),
+            Title = title.Trim(),
+            IsCompleted = false
+        });
+        DraftSubtaskInputText = string.Empty;
+    }
+
+    [RelayCommand]
+    public void RemoveDraftSubtask(PlannerSubTask subtask)
+    {
+        if (subtask != null) DraftSubtasks.Remove(subtask);
+    }
+
+    [RelayCommand]
+    public void ToggleDraftSubtask(PlannerSubTask subtask)
+    {
+        if (subtask != null) subtask.IsCompleted = !subtask.IsCompleted;
+    }
+
+    [RelayCommand]
+    public void AddEditTag(string tagName)
+    {
+        if (string.IsNullOrWhiteSpace(tagName)) return;
+        string tag = tagName.Trim();
+        if (!tag.StartsWith("#")) tag = "#" + tag;
+        if (!EditTaskTags.Any(t => t.Name.Equals(tag, StringComparison.OrdinalIgnoreCase)))
+        {
+            var existing = AvailableTags.FirstOrDefault(t => t.Name.Equals(tag, StringComparison.OrdinalIgnoreCase));
+            string color = existing?.ColorHex ?? "#005FB8";
+            EditTaskTags.Add(new PlannerTag { Name = tag, ColorHex = color });
+        }
+        EditTagInputText = string.Empty;
+    }
+
+    [RelayCommand]
+    public void RemoveEditTag(PlannerTag tag)
+    {
+        if (tag != null) EditTaskTags.Remove(tag);
+    }
+
+    public void UpdateEditTagColor(PlannerTag tag, string colorHex)
+    {
+        if (tag == null || string.IsNullOrWhiteSpace(colorHex)) return;
+        tag.ColorHex = colorHex;
+        _ = _dataService.AddOrUpdateTagAsync(tag.Name, colorHex);
+    }
+
+    [RelayCommand]
+    public void AddEditSubtask(string title)
+    {
+        if (string.IsNullOrWhiteSpace(title)) return;
+        EditSubtasks.Add(new PlannerSubTask
+        {
+            Id = Guid.NewGuid().ToString("N"),
+            Title = title.Trim(),
+            IsCompleted = false
+        });
+        EditSubtaskInputText = string.Empty;
+    }
+
+    [RelayCommand]
+    public void RemoveEditSubtask(PlannerSubTask subtask)
+    {
+        if (subtask != null) EditSubtasks.Remove(subtask);
+    }
+
+    [RelayCommand]
+    public void ToggleEditSubtask(PlannerSubTask subtask)
+    {
+        if (subtask != null) subtask.IsCompleted = !subtask.IsCompleted;
     }
 
     [RelayCommand]
@@ -827,8 +1177,58 @@ public partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(SelectedNavCategory));
         OnPropertyChanged(nameof(SegmentFilter));
         OnPropertyChanged(nameof(TagFilter));
+        OnPropertyChanged(nameof(IsDarkTheme));
+        OnPropertyChanged(nameof(CurrentTheme));
         UpdateViewFilters();
         ThemeChanged?.Invoke(this, theme);
+    }
+
+    public void FilterDropdownTags(string query)
+    {
+        FilteredTags.Clear();
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            foreach (var tag in AvailableTags) FilteredTags.Add(tag);
+        }
+        else
+        {
+            foreach (var tag in AvailableTags.Where(t => t.Name.Contains(query, StringComparison.OrdinalIgnoreCase)))
+            {
+                FilteredTags.Add(tag);
+            }
+        }
+    }
+
+    [RelayCommand]
+    public void SelectTagFilter(string tag)
+    {
+        SetTagFilter(tag);
+    }
+
+    [RelayCommand]
+    public void ClearTagFilter()
+    {
+        SetTagFilter("All");
+    }
+
+    [RelayCommand]
+    public async Task ChangeStorageLocationAsync(string newFolder)
+    {
+        if (string.IsNullOrWhiteSpace(newFolder)) return;
+        bool changed = await _settingsService.ChangeStorageDirectoryAsync(newFolder);
+        if (changed)
+        {
+            CurrentStoragePath = _settingsService.CurrentStorageDirectory;
+            await LoadDataAsync();
+        }
+    }
+
+    [RelayCommand]
+    public async Task ResetStorageLocationAsync()
+    {
+        await _settingsService.ResetStorageDirectoryAsync();
+        CurrentStoragePath = _settingsService.CurrentStorageDirectory;
+        await LoadDataAsync();
     }
 
     partial void OnSearchTextChanged(string value)

@@ -7,11 +7,15 @@ namespace Planner;
 
 public sealed partial class MainWindow : Window
 {
-    private MainViewModel? _viewModel;
-
-    public MainWindow()
+    public MainWindow(ElementTheme initialTheme = ElementTheme.Default)
     {
         InitializeComponent();
+
+        if (Content is FrameworkElement root)
+        {
+            root.RequestedTheme = initialTheme;
+        }
+        RootFrame.RequestedTheme = initialTheme;
 
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
@@ -28,14 +32,5 @@ public sealed partial class MainWindow : Window
         }
 
         RootFrame.Navigate(typeof(MainPage));
-    }
-
-    private void OnTitleSearchTextChanged(object sender, TextChangedEventArgs e)
-    {
-        _viewModel ??= App.Services.GetService<MainViewModel>();
-        if (_viewModel != null && sender is TextBox tb)
-        {
-            _viewModel.SearchText = tb.Text;
-        }
     }
 }

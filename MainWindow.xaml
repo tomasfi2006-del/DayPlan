@@ -15,7 +15,7 @@
 
     <Grid Background="{ThemeResource AppCanvasBackgroundBrush}">
         <Grid.RowDefinitions>
-            <RowDefinition Height="38" />
+            <RowDefinition Height="54" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
@@ -24,7 +24,7 @@
             x:Name="AppTitleBar"
             Grid.Row="0"
             Background="Transparent"
-            Padding="12,0,0,0">
+            Padding="16,10,0,10">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
@@ -58,32 +58,12 @@
                     VerticalAlignment="Center" />
             </StackPanel>
 
-            <!-- Centered Fluent Search Bar -->
-            <Grid
+            <!-- TitleBar Drag Region / Center Spacing -->
+            <Border
                 Grid.Column="1"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Center"
-                Width="320"
-                Height="28">
-                <TextBox
-                    x:Name="TitleSearchBox"
-                    PlaceholderText="Search tasks, lists, or tags (Ctrl+F)"
-                    FontSize="12"
-                    CornerRadius="4"
-                    Padding="28,2,8,2"
-                    VerticalAlignment="Center"
-                    TextChanged="OnTitleSearchTextChanged" />
-                <FontIcon
-                    Glyph="&#xE721;"
-                    FontSize="12"
-                    Foreground="{ThemeResource AppTextSecondaryBrush}"
-                    HorizontalAlignment="Left"
-                    VerticalAlignment="Center"
-                    Margin="8,0,0,0"
-                    IsHitTestVisible="False" />
-            </Grid>
+                Background="Transparent" />
 
-            <!-- Drag region placeholder on the right before caption buttons -->
+            <!-- Right spacing before caption buttons -->
             <Border
                 x:Name="TitleDragRegion"
                 Grid.Column="2"
