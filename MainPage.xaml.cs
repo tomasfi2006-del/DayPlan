@@ -29,6 +29,7 @@ public sealed partial class MainPage : Page
             NewListModalDialog.XamlRoot = XamlRoot;
             SettingsModalDialog.XamlRoot = XamlRoot;
             CreateTaskModalDialog.XamlRoot = XamlRoot;
+            EditTaskModalDialog.XamlRoot = XamlRoot;
         }
 
         ViewModel.ThemeChanged += (s, theme) =>
@@ -67,6 +68,18 @@ public sealed partial class MainPage : Page
                     ViewModel.CloseCreateTaskDialog();
                 }
             }
+            else if (args.PropertyName == nameof(ViewModel.IsEditTaskDialogOpen) && ViewModel.IsEditTaskDialogOpen)
+            {
+                if (EditTaskModalDialog.XamlRoot == null && XamlRoot != null)
+                {
+                    EditTaskModalDialog.XamlRoot = XamlRoot;
+                }
+                var result = await EditTaskModalDialog.ShowAsync();
+                if (result != ContentDialogResult.Primary)
+                {
+                    ViewModel.CloseEditTaskDialog();
+                }
+            }
         };
     }
 
@@ -82,6 +95,14 @@ public sealed partial class MainPage : Page
         if (sender is Button btn && btn.DataContext is PlannerProject proj)
         {
             ViewModel.SelectProject(proj);
+        }
+    }
+
+    private async void OnDeleteProjectContextClicked(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuFlyoutItem item && item.DataContext is PlannerProject proj)
+        {
+            await ViewModel.DeleteProjectAsync(proj);
         }
     }
 
@@ -107,6 +128,24 @@ public sealed partial class MainPage : Page
         args.Handled = true;
     }
 
+    private void OnCtrlFInvoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
+    {
+        GlobalSearchBox.Focus(FocusState.Programmatic);
+        args.Handled = true;
+    }
+
+    private void OnCtrlTInvoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
+    {
+        ViewModel.SelectNav("Today");
+        args.Handled = true;
+    }
+
+    private void OnCtrlIInvoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
+    {
+        ViewModel.SelectNav("Inbox");
+        args.Handled = true;
+    }
+
     private void OnCtrlNBadgeTapped(object sender, TappedRoutedEventArgs e)
     {
         ViewModel.OpenCreateTaskDialog();
@@ -124,6 +163,25 @@ public sealed partial class MainPage : Page
         try
         {
             await ViewModel.ConfirmCreateTaskAsync();
+        }
+        finally
+        {
+            deferral.Complete();
+        }
+    }
+
+    private async void OnEditTaskConfirmed(ContentDialog sender, ContentDialogButtonClickEventArgs args)
+    {
+        if (string.IsNullOrWhiteSpace(ViewModel.EditTaskTitle))
+        {
+            args.Cancel = true;
+            return;
+        }
+
+        var deferral = args.GetDeferral();
+        try
+        {
+            await ViewModel.ConfirmEditTaskAsync();
         }
         finally
         {
@@ -169,6 +227,14 @@ public sealed partial class MainPage : Page
         }
     }
 
+    private void OnEditColorSwatchClicked(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is string hex)
+        {
+            ViewModel.EditTaskTagColor = hex;
+        }
+    }
+
     private async void OnTaskToggleRequested(object? sender, PlannerTask task)
     {
         await ViewModel.ToggleTaskCompletionAsync(task);
@@ -179,13 +245,39 @@ public sealed partial class MainPage : Page
         await ViewModel.DeleteTaskAsync(task);
     }
 
+    private void OnTaskEditRequested(object? sender, PlannerTask task)
+    {
+        ViewModel.OpenEditTaskDialog(task);
+    }
+
     private async void OnSubTaskAddRequested(object? sender, PlannerTask task)
     {
         await ViewModel.AddSubTaskAsync(task);
     }
 
+    private async void OnSubTaskToggleRequested(object? sender, (string TaskId, string SubTaskId) e)
+    {
+        await ViewModel.ToggleSubTaskAsync(e.TaskId, e.SubTaskId);
+    }
+
+    private async void OnSubTaskDeleteRequested(object? sender, (string TaskId, string SubTaskId) e)
+    {
+        await ViewModel.DeleteSubTaskAsync(e.TaskId, e.SubTaskId);
+    }
+
+    private async void OnSubTaskCreateRequested(object? sender, (string TaskId, string Title) e)
+    {
+        await ViewModel.AddNamedSubTaskAsync(e.TaskId, e.Title);
+    }
+
     private async void OnCreateListConfirmed(ContentDialog sender, ContentDialogButtonClickEventArgs args)
     {
+        if (string.IsNullOrWhiteSpace(ViewModel.NewListName))
+        {
+            args.Cancel = true;
+            return;
+        }
+
         if (AreaSelectComboBox.SelectedItem is ComboBoxItem item)
         {
             ViewModel.NewListArea = item.Content?.ToString() ?? "Work";

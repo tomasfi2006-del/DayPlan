@@ -13,6 +13,9 @@
 
     <Page.KeyboardAccelerators>
         <KeyboardAccelerator Key="N" Modifiers="Control" Invoked="OnCtrlNInvoked" />
+        <KeyboardAccelerator Key="F" Modifiers="Control" Invoked="OnCtrlFInvoked" />
+        <KeyboardAccelerator Key="T" Modifiers="Control" Invoked="OnCtrlTInvoked" />
+        <KeyboardAccelerator Key="I" Modifiers="Control" Invoked="OnCtrlIInvoked" />
     </Page.KeyboardAccelerators>
 
     <Grid>
@@ -260,6 +263,15 @@
                                                 BorderThickness="0"
                                                 Background="Transparent"
                                                 Click="OnProjectItemClicked">
+                                                <Button.ContextFlyout>
+                                                    <MenuFlyout>
+                                                        <MenuFlyoutItem Text="Delete List" Click="OnDeleteProjectContextClicked">
+                                                            <MenuFlyoutItem.Icon>
+                                                                <FontIcon Glyph="&#xE74D;" />
+                                                            </MenuFlyoutItem.Icon>
+                                                        </MenuFlyoutItem>
+                                                    </MenuFlyout>
+                                                </Button.ContextFlyout>
                                                 <Grid ColumnSpacing="8">
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="Auto" />
@@ -303,6 +315,15 @@
                                                 BorderThickness="0"
                                                 Background="Transparent"
                                                 Click="OnProjectItemClicked">
+                                                <Button.ContextFlyout>
+                                                    <MenuFlyout>
+                                                        <MenuFlyoutItem Text="Delete List" Click="OnDeleteProjectContextClicked">
+                                                            <MenuFlyoutItem.Icon>
+                                                                <FontIcon Glyph="&#xE74D;" />
+                                                            </MenuFlyoutItem.Icon>
+                                                        </MenuFlyoutItem>
+                                                    </MenuFlyout>
+                                                </Button.ContextFlyout>
                                                 <Grid ColumnSpacing="8">
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="Auto" />
@@ -435,6 +456,18 @@
                             </StackPanel>
                         </Border>
                     </StackPanel>
+
+                    <!-- Center Search Box -->
+                    <AutoSuggestBox
+                        x:Name="GlobalSearchBox"
+                        Grid.Column="1"
+                        MaxWidth="280"
+                        Margin="16,0"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        PlaceholderText="Search tasks (Ctrl+F)"
+                        Text="{x:Bind ViewModel.SearchText, Mode=TwoWay}"
+                        QueryIcon="Find" />
 
                     <!-- Add Task Primary Button -->
                     <Button
@@ -583,7 +616,11 @@
                                                     TaskItem="{x:Bind}"
                                                     TaskToggleRequested="OnTaskToggleRequested"
                                                     TaskDeleteRequested="OnTaskDeleteRequested"
-                                                    SubTaskAddRequested="OnSubTaskAddRequested" />
+                                                    TaskEditRequested="OnTaskEditRequested"
+                                                    SubTaskAddRequested="OnSubTaskAddRequested"
+                                                    SubTaskToggleRequested="OnSubTaskToggleRequested"
+                                                    SubTaskDeleteRequested="OnSubTaskDeleteRequested"
+                                                    SubTaskCreateRequested="OnSubTaskCreateRequested" />
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
@@ -608,7 +645,11 @@
                                                     TaskItem="{x:Bind}"
                                                     TaskToggleRequested="OnTaskToggleRequested"
                                                     TaskDeleteRequested="OnTaskDeleteRequested"
-                                                    SubTaskAddRequested="OnSubTaskAddRequested" />
+                                                    TaskEditRequested="OnTaskEditRequested"
+                                                    SubTaskAddRequested="OnSubTaskAddRequested"
+                                                    SubTaskToggleRequested="OnSubTaskToggleRequested"
+                                                    SubTaskDeleteRequested="OnSubTaskDeleteRequested"
+                                                    SubTaskCreateRequested="OnSubTaskCreateRequested" />
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
@@ -633,7 +674,11 @@
                                                     TaskItem="{x:Bind}"
                                                     TaskToggleRequested="OnTaskToggleRequested"
                                                     TaskDeleteRequested="OnTaskDeleteRequested"
-                                                    SubTaskAddRequested="OnSubTaskAddRequested" />
+                                                    TaskEditRequested="OnTaskEditRequested"
+                                                    SubTaskAddRequested="OnSubTaskAddRequested"
+                                                    SubTaskToggleRequested="OnSubTaskToggleRequested"
+                                                    SubTaskDeleteRequested="OnSubTaskDeleteRequested"
+                                                    SubTaskCreateRequested="OnSubTaskCreateRequested" />
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
@@ -697,6 +742,20 @@
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
+
+                                    <!-- Empty Horizon State -->
+                                    <Border
+                                        Padding="12,16"
+                                        Background="{ThemeResource AppCanvasBackgroundBrush}"
+                                        BorderBrush="{ThemeResource AppCardBorderBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="6"
+                                        Visibility="{x:Bind ViewModel.HorizonEvents.Count, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=inverse}">
+                                        <StackPanel HorizontalAlignment="Center" Spacing="4">
+                                            <FontIcon Glyph="&#xE787;" FontSize="18" Foreground="{ThemeResource AppTextSecondaryBrush}" HorizontalAlignment="Center" />
+                                            <TextBlock Text="No scheduled events today" FontSize="11" Foreground="{ThemeResource AppTextSecondaryBrush}" HorizontalAlignment="Center" />
+                                        </StackPanel>
+                                    </Border>
                                 </StackPanel>
                             </Border>
 
@@ -714,11 +773,11 @@
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
                                         <TextBlock Grid.Column="0" Text="Weekly Load" FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource AppTextPrimaryBrush}" />
-                                        <TextBlock Grid.Column="1" Text="32 Tasks Total" FontSize="11" Foreground="{ThemeResource AppTextSecondaryBrush}" />
+                                        <TextBlock Grid.Column="1" Text="{x:Bind ViewModel.WeeklyTotalTasksText, Mode=OneWay}" FontSize="11" Foreground="{ThemeResource AppTextSecondaryBrush}" />
                                     </Grid>
 
                                     <!-- Native Weekly Load Chart with Viewbox + Canvas and Scrubber -->
-                                    <controls:WeeklyLoadChart Height="90" HorizontalAlignment="Stretch" />
+                                    <controls:WeeklyLoadChart Height="90" HorizontalAlignment="Stretch" WeeklyLoads="{x:Bind ViewModel.WeeklyLoads, Mode=OneWay}" />
                                 </StackPanel>
                             </Border>
 
@@ -771,7 +830,11 @@
                                             TaskItem="{x:Bind}"
                                             TaskToggleRequested="OnTaskToggleRequested"
                                             TaskDeleteRequested="OnTaskDeleteRequested"
-                                            SubTaskAddRequested="OnSubTaskAddRequested" />
+                                            TaskEditRequested="OnTaskEditRequested"
+                                            SubTaskAddRequested="OnSubTaskAddRequested"
+                                            SubTaskToggleRequested="OnSubTaskToggleRequested"
+                                            SubTaskDeleteRequested="OnSubTaskDeleteRequested"
+                                            SubTaskCreateRequested="OnSubTaskCreateRequested" />
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
@@ -932,6 +995,38 @@
                         PlaceholderText="Pick date" />
                 </Grid>
 
+                <!-- Project & Duration Row -->
+                <Grid ColumnSpacing="10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <ComboBox
+                        Grid.Column="0"
+                        Header="List / Project"
+                        HorizontalAlignment="Stretch"
+                        ItemsSource="{x:Bind ViewModel.Projects, Mode=OneWay}"
+                        DisplayMemberPath="Name"
+                        SelectedValuePath="Id"
+                        SelectedValue="{x:Bind ViewModel.TaskDraftProjectId, Mode=TwoWay}"
+                        PlaceholderText="None" />
+
+                    <ComboBox
+                        Grid.Column="1"
+                        Header="Duration"
+                        HorizontalAlignment="Stretch"
+                        Text="{x:Bind ViewModel.TaskDraftDuration, Mode=TwoWay}"
+                        IsEditable="True"
+                        PlaceholderText="e.g. 15m, 30m">
+                        <ComboBoxItem Content="15m" />
+                        <ComboBoxItem Content="30m" />
+                        <ComboBoxItem Content="45m" />
+                        <ComboBoxItem Content="1h" />
+                        <ComboBoxItem Content="2h" />
+                    </ComboBox>
+                </Grid>
+
                 <!-- Quick Presets -->
                 <StackPanel Spacing="4">
                     <TextBlock Text="Schedule Preset" FontSize="11" Foreground="{ThemeResource AppTextSecondaryBrush}" />
@@ -988,6 +1083,133 @@
                     AcceptsReturn="True"
                     Height="60"
                     Text="{x:Bind ViewModel.TaskDraftNotes, Mode=TwoWay}"
+                    FontSize="12" />
+            </StackPanel>
+        </ContentDialog>
+
+        <!-- Edit Task Modal Dialog -->
+        <ContentDialog
+            x:Name="EditTaskModalDialog"
+            Title="Edit Task"
+            PrimaryButtonText="Save Changes"
+            CloseButtonText="Cancel"
+            DefaultButton="Primary"
+            PrimaryButtonClick="OnEditTaskConfirmed">
+            <StackPanel Spacing="12" Margin="0,10,0,0" MinWidth="380">
+                <!-- Task Title -->
+                <TextBox
+                    x:Name="EditTaskTitleBox"
+                    Header="Title"
+                    PlaceholderText="Task title"
+                    Text="{x:Bind ViewModel.EditTaskTitle, Mode=TwoWay}"
+                    FontSize="13" />
+
+                <!-- Section & Date row -->
+                <Grid ColumnSpacing="10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <ComboBox
+                        Grid.Column="0"
+                        Header="Section"
+                        HorizontalAlignment="Stretch"
+                        Text="{x:Bind ViewModel.EditTaskSection, Mode=TwoWay}"
+                        IsEditable="True">
+                        <ComboBoxItem Content="Morning" />
+                        <ComboBoxItem Content="Afternoon" />
+                        <ComboBoxItem Content="Evening" />
+                        <ComboBoxItem Content="Inbox" />
+                        <ComboBoxItem Content="Upcoming" />
+                        <ComboBoxItem Content="Anytime" />
+                        <ComboBoxItem Content="Someday" />
+                    </ComboBox>
+
+                    <CalendarDatePicker
+                        Grid.Column="1"
+                        Header="Due Date"
+                        HorizontalAlignment="Stretch"
+                        Date="{x:Bind ViewModel.EditTaskDueDate, Mode=TwoWay}"
+                        PlaceholderText="Pick date" />
+                </Grid>
+
+                <!-- Project & Duration Row -->
+                <Grid ColumnSpacing="10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <ComboBox
+                        Grid.Column="0"
+                        Header="List / Project"
+                        HorizontalAlignment="Stretch"
+                        ItemsSource="{x:Bind ViewModel.Projects, Mode=OneWay}"
+                        DisplayMemberPath="Name"
+                        SelectedValuePath="Id"
+                        SelectedValue="{x:Bind ViewModel.EditTaskProjectId, Mode=TwoWay}"
+                        PlaceholderText="None" />
+
+                    <ComboBox
+                        Grid.Column="1"
+                        Header="Duration"
+                        HorizontalAlignment="Stretch"
+                        Text="{x:Bind ViewModel.EditTaskDuration, Mode=TwoWay}"
+                        IsEditable="True"
+                        PlaceholderText="e.g. 15m, 30m">
+                        <ComboBoxItem Content="15m" />
+                        <ComboBoxItem Content="30m" />
+                        <ComboBoxItem Content="45m" />
+                        <ComboBoxItem Content="1h" />
+                        <ComboBoxItem Content="2h" />
+                    </ComboBox>
+                </Grid>
+
+                <!-- Tag & Color Row -->
+                <StackPanel Spacing="4">
+                    <TextBlock Text="Tag &amp; Color" FontSize="11" Foreground="{ThemeResource AppTextSecondaryBrush}" />
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox
+                            Grid.Column="0"
+                            PlaceholderText="e.g. #Work, #Personal, #Dev"
+                            Text="{x:Bind ViewModel.EditTaskTag, Mode=TwoWay}"
+                            FontSize="12" />
+                        <Border
+                            Grid.Column="1"
+                            Width="26"
+                            Height="26"
+                            CornerRadius="13"
+                            VerticalAlignment="Center"
+                            BorderBrush="{ThemeResource AppCardBorderBrush}"
+                            BorderThickness="1"
+                            Background="{x:Bind ViewModel.EditTaskTagColor, Mode=OneWay, Converter={StaticResource HexToBrushConverter}}" />
+                    </Grid>
+
+                    <!-- Curated Color Swatches -->
+                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
+                        <Button Width="20" Height="20" CornerRadius="10" Padding="0" Background="#005FB8" Click="OnEditColorSwatchClicked" Tag="#005FB8" ToolTipService.ToolTip="Blue" />
+                        <Button Width="20" Height="20" CornerRadius="10" Padding="0" Background="#107C41" Click="OnEditColorSwatchClicked" Tag="#107C41" ToolTipService.ToolTip="Emerald" />
+                        <Button Width="20" Height="20" CornerRadius="10" Padding="0" Background="#744DA9" Click="OnEditColorSwatchClicked" Tag="#744DA9" ToolTipService.ToolTip="Purple" />
+                        <Button Width="20" Height="20" CornerRadius="10" Padding="0" Background="#CA5010" Click="OnEditColorSwatchClicked" Tag="#CA5010" ToolTipService.ToolTip="Amber" />
+                        <Button Width="20" Height="20" CornerRadius="10" Padding="0" Background="#D13438" Click="OnEditColorSwatchClicked" Tag="#D13438" ToolTipService.ToolTip="Crimson" />
+                        <Button Width="20" Height="20" CornerRadius="10" Padding="0" Background="#0078D4" Click="OnEditColorSwatchClicked" Tag="#0078D4" ToolTipService.ToolTip="Cyan" />
+                        <Button Width="20" Height="20" CornerRadius="10" Padding="0" Background="#038387" Click="OnEditColorSwatchClicked" Tag="#038387" ToolTipService.ToolTip="Teal" />
+                        <Button Width="20" Height="20" CornerRadius="10" Padding="0" Background="#475569" Click="OnEditColorSwatchClicked" Tag="#475569" ToolTipService.ToolTip="Slate" />
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Notes Field -->
+                <TextBox
+                    Header="Notes (Optional)"
+                    PlaceholderText="Add checklist notes or extra details..."
+                    AcceptsReturn="True"
+                    Height="60"
+                    Text="{x:Bind ViewModel.EditTaskNotes, Mode=TwoWay}"
                     FontSize="12" />
             </StackPanel>
         </ContentDialog>

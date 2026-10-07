@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Planner.Models;
@@ -18,11 +19,38 @@ public interface IPlannerDataService
     Task<PlannerDataPackage> LoadDataAsync();
     Task SaveDataAsync(PlannerDataPackage data);
     Task<PlannerTask> AddTaskAsync(string title, string section = "Morning", string? projectId = null, string? tag = null);
-    Task<PlannerTask> AddTaskWithDetailsAsync(string title, string section, DateTime? dueDate, string dueTimeText, string? tag, string tagColor, string notes);
+    Task<PlannerTask> AddTaskWithDetailsAsync(
+        string title,
+        string section,
+        DateTime? dueDate,
+        string dueTimeText,
+        string durationText,
+        string? tag,
+        string tagColor,
+        string notes,
+        string? projectId = null,
+        string? projectName = null,
+        string? projectColor = null);
+    Task<PlannerTask?> UpdateTaskAsync(
+        string taskId,
+        string title,
+        string section,
+        DateTime? dueDate,
+        string dueTimeText,
+        string durationText,
+        string? tag,
+        string tagColor,
+        string notes,
+        string? projectId,
+        string? projectName,
+        string? projectColor);
     Task ToggleTaskCompletionAsync(string taskId);
     Task DeleteTaskAsync(string taskId);
     Task AddSubTaskAsync(string taskId, string subTaskTitle);
     Task ToggleSubTaskAsync(string taskId, string subTaskId);
+    Task DeleteSubTaskAsync(string taskId, string subTaskId);
     Task<PlannerProject> AddProjectAsync(string name, string area, string colorHex);
+    Task DeleteProjectAsync(string projectId);
+    Task RenameProjectAsync(string projectId, string newName);
     Task AddOrUpdateTagAsync(string name, string colorHex);
 }

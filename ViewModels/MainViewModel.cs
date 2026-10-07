@@ -150,6 +150,55 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     public partial string TaskDraftNotes { get; set; } = string.Empty;
 
+    [ObservableProperty]
+    public partial string TaskDraftDuration { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial string TaskDraftProjectId { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial string TaskDraftProjectName { get; set; } = string.Empty;
+
+    // Edit Task State
+    [ObservableProperty]
+    public partial bool IsEditTaskDialogOpen { get; set; }
+
+    [ObservableProperty]
+    public partial string EditTaskId { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial string EditTaskTitle { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial string EditTaskSection { get; set; } = "Morning";
+
+    [ObservableProperty]
+    public partial DateTimeOffset? EditTaskDueDate { get; set; }
+
+    [ObservableProperty]
+    public partial string EditTaskDueTimeText { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial string EditTaskDuration { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial string EditTaskTag { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial string EditTaskTagColor { get; set; } = "#005FB8";
+
+    [ObservableProperty]
+    public partial string EditTaskNotes { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial string EditTaskProjectId { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial string EditTaskProjectName { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial string WeeklyTotalTasksText { get; set; } = "0 Tasks Total";
+
     public ObservableCollection<PlannerTag> AvailableTags { get; } = new();
 
     public ObservableCollection<PlannerTask> MorningTasks { get; } = new();
@@ -193,7 +242,20 @@ public partial class MainViewModel : ObservableObject
 
     private async Task LoadDataAsync()
     {
+        var expandedIds = MorningTasks.Concat(AfternoonTasks).Concat(EveningTasks).Concat(SectionedTasks)
+            .Where(t => t.IsExpanded)
+            .Select(t => t.Id)
+            .ToHashSet();
+
         _currentPackage = await _dataService.LoadDataAsync();
+
+        foreach (var t in _currentPackage.Tasks)
+        {
+            if (expandedIds.Contains(t.Id))
+            {
+                t.IsExpanded = true;
+            }
+        }
 
         Projects.Clear();
         WorkProjects.Clear();
@@ -215,17 +277,57 @@ public partial class MainViewModel : ObservableObject
             AvailableTags.Add(tag);
         }
 
+        // 1. Populate Live Today's Horizon from timed tasks
         HorizonEvents.Clear();
-        foreach (var h in _currentPackage.HorizonEvents)
+        var todayTimedTasks = _currentPackage.Tasks
+            .Where(t => !t.IsCompleted && (t.Section is "Morning" or "Afternoon" or "Evening" || (t.DueDate.HasValue && t.DueDate.Value.Date == DateTime.Today)))
+            .Where(t => !string.IsNullOrWhiteSpace(t.DueTimeText))
+            .ToList();
+
+        foreach (var t in todayTimedTasks)
         {
-            HorizonEvents.Add(h);
+            HorizonEvents.Add(new CalendarHorizonEvent
+            {
+                Id = t.Id,
+                Title = t.Title,
+                TimeRange = t.DueTimeText,
+                AccentColor = !string.IsNullOrEmpty(t.TagColorHex) ? t.TagColorHex : (!string.IsNullOrEmpty(t.ProjectColor) ? t.ProjectColor : "#005FB8"),
+                Location = t.ProjectName
+            });
         }
 
+        // 2. Compute dynamic Weekly Loads (Monday through Sunday)
+        DateTime today = DateTime.Today;
+        int diff = (7 + (today.DayOfWeek - DayOfWeek.Monday)) % 7;
+        DateTime startOfWeek = today.AddDays(-1 * diff).Date;
+
         WeeklyLoads.Clear();
-        foreach (var w in _currentPackage.WeeklyLoads)
+        int weeklyTotal = 0;
+        string[] dayShorts = ["M", "T", "W", "T", "F", "S", "S"];
+        string[] dayNames = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+        for (int i = 0; i < 7; i++)
         {
-            WeeklyLoads.Add(w);
+            DateTime currentDay = startOfWeek.AddDays(i);
+            int count = _currentPackage.Tasks.Count(t =>
+                (t.DueDate.HasValue && t.DueDate.Value.Date == currentDay) ||
+                (t.CompletedAt.HasValue && t.CompletedAt.Value.Date == currentDay) ||
+                (currentDay == today && t.Section is "Morning" or "Afternoon" or "Evening"));
+
+            weeklyTotal += count;
+            double barHeight = Math.Min(64, Math.Max(4, count * 7.0));
+
+            WeeklyLoads.Add(new WeeklyDayLoad
+            {
+                DayShort = dayShorts[i],
+                DayName = dayNames[i],
+                TaskCount = count,
+                BarHeight = barHeight,
+                IsToday = currentDay == today
+            });
         }
+
+        WeeklyTotalTasksText = $"{weeklyTotal} {(weeklyTotal == 1 ? "Task Total" : "Tasks Total")}";
 
         UpdateViewFilters();
     }
@@ -288,7 +390,7 @@ public partial class MainViewModel : ObservableObject
         }
         else if (IsUpcomingView)
         {
-            sourceTasks = sourceTasks.Where(t => t.Section == "Upcoming");
+            sourceTasks = sourceTasks.Where(t => t.Section == "Upcoming" || (t.DueDate.HasValue && t.DueDate.Value.Date > DateTime.Today));
         }
         else if (IsLogbookView)
         {
@@ -511,12 +613,15 @@ public partial class MainViewModel : ObservableObject
     public void OpenCreateTaskDialog()
     {
         TaskDraftTitle = string.Empty;
-        TaskDraftSection = IsTodayView ? "Morning" : (IsInboxView ? "Inbox" : (IsUpcomingView ? "Upcoming" : SelectedNavCategory));
-        TaskDraftDueDate = DateTimeOffset.Now;
-        TaskDraftDueTimeText = "Today";
-        TaskDraftTag = AvailableTags.Count > 0 ? AvailableTags[0].Name : "#Work";
+        TaskDraftSection = IsTodayView ? "Morning" : (IsInboxView ? "Inbox" : "Morning");
+        TaskDraftDueDate = IsTodayView ? DateTimeOffset.Now : null;
+        TaskDraftDueTimeText = string.Empty;
+        TaskDraftDuration = string.Empty;
+        TaskDraftTag = TagFilter != "All" ? TagFilter : (AvailableTags.Count > 0 ? AvailableTags[0].Name : "#Work");
         TaskDraftTagColor = AvailableTags.Count > 0 ? AvailableTags[0].ColorHex : "#005FB8";
         TaskDraftNotes = string.Empty;
+        TaskDraftProjectId = IsProjectView && !string.IsNullOrEmpty(SelectedProjectId) ? SelectedProjectId : string.Empty;
+        TaskDraftProjectName = IsProjectView ? SelectedProjectName : string.Empty;
         IsCreateTaskDialogOpen = true;
     }
 
@@ -532,17 +637,149 @@ public partial class MainViewModel : ObservableObject
         if (string.IsNullOrWhiteSpace(TaskDraftTitle)) return;
 
         DateTime? date = TaskDraftDueDate?.DateTime;
+        string? projColor = null;
+        if (!string.IsNullOrEmpty(TaskDraftProjectId))
+        {
+            var p = Projects.FirstOrDefault(proj => proj.Id == TaskDraftProjectId);
+            if (p != null)
+            {
+                projColor = p.ColorHex;
+                TaskDraftProjectName = p.Name;
+            }
+            else
+            {
+                TaskDraftProjectName = string.Empty;
+            }
+        }
+        else
+        {
+            TaskDraftProjectName = string.Empty;
+        }
+
         await _dataService.AddTaskWithDetailsAsync(
             TaskDraftTitle.Trim(),
             TaskDraftSection,
             date,
             TaskDraftDueTimeText,
-            TaskDraftTag,
+            TaskDraftDuration,
+            TaskDraftTag?.Trim(),
             TaskDraftTagColor,
-            TaskDraftNotes);
+            TaskDraftNotes,
+            TaskDraftProjectId,
+            TaskDraftProjectName,
+            projColor);
 
         IsCreateTaskDialogOpen = false;
         await LoadDataAsync();
+    }
+
+    [RelayCommand]
+    public void OpenEditTaskDialog(PlannerTask task)
+    {
+        if (task == null) return;
+        EditTaskId = task.Id;
+        EditTaskTitle = task.Title;
+        EditTaskSection = string.IsNullOrWhiteSpace(task.Section) ? "Morning" : task.Section;
+        EditTaskDueDate = task.DueDate.HasValue ? new DateTimeOffset(task.DueDate.Value) : null;
+        EditTaskDueTimeText = task.DueTimeText;
+        EditTaskDuration = task.DurationText;
+        EditTaskTag = task.PrimaryTag;
+        EditTaskTagColor = string.IsNullOrWhiteSpace(task.TagColorHex) ? "#005FB8" : task.TagColorHex;
+        EditTaskNotes = task.Notes;
+        EditTaskProjectId = task.ProjectId;
+        EditTaskProjectName = task.ProjectName;
+        IsEditTaskDialogOpen = true;
+    }
+
+    [RelayCommand]
+    public void CloseEditTaskDialog()
+    {
+        IsEditTaskDialogOpen = false;
+    }
+
+    [RelayCommand]
+    public async Task ConfirmEditTaskAsync()
+    {
+        if (string.IsNullOrWhiteSpace(EditTaskTitle) || string.IsNullOrEmpty(EditTaskId)) return;
+
+        DateTime? date = EditTaskDueDate?.DateTime;
+        string? projColor = null;
+        if (!string.IsNullOrEmpty(EditTaskProjectId))
+        {
+            var p = Projects.FirstOrDefault(proj => proj.Id == EditTaskProjectId);
+            if (p != null)
+            {
+                projColor = p.ColorHex;
+                EditTaskProjectName = p.Name;
+            }
+            else
+            {
+                EditTaskProjectName = string.Empty;
+            }
+        }
+        else
+        {
+            EditTaskProjectName = string.Empty;
+        }
+
+        await _dataService.UpdateTaskAsync(
+            EditTaskId,
+            EditTaskTitle.Trim(),
+            EditTaskSection,
+            date,
+            EditTaskDueTimeText,
+            EditTaskDuration,
+            EditTaskTag?.Trim(),
+            EditTaskTagColor,
+            EditTaskNotes,
+            EditTaskProjectId,
+            EditTaskProjectName,
+            projColor);
+
+        IsEditTaskDialogOpen = false;
+        await LoadDataAsync();
+    }
+
+    [RelayCommand]
+    public async Task DeleteProjectAsync(PlannerProject project)
+    {
+        if (project == null) return;
+        await _dataService.DeleteProjectAsync(project.Id);
+        if (SelectedNavCategory == "Project" && SelectedProjectId == project.Id)
+        {
+            SelectNav("Inbox");
+        }
+        else
+        {
+            await LoadDataAsync();
+        }
+    }
+
+    public async Task ToggleSubTaskAsync(string taskId, string subTaskId)
+    {
+        if (string.IsNullOrEmpty(taskId) || string.IsNullOrEmpty(subTaskId)) return;
+        await _dataService.ToggleSubTaskAsync(taskId, subTaskId);
+        await LoadDataAsync();
+    }
+
+    public async Task AddNamedSubTaskAsync(string taskId, string title)
+    {
+        if (string.IsNullOrWhiteSpace(taskId) || string.IsNullOrWhiteSpace(title)) return;
+        await _dataService.AddSubTaskAsync(taskId, title.Trim());
+        await LoadDataAsync();
+    }
+
+    public async Task DeleteSubTaskAsync(string taskId, string subTaskId)
+    {
+        if (string.IsNullOrEmpty(taskId) || string.IsNullOrEmpty(subTaskId)) return;
+        await _dataService.DeleteSubTaskAsync(taskId, subTaskId);
+        await LoadDataAsync();
+    }
+
+    [RelayCommand]
+    public void ClearSearch()
+    {
+        SearchText = string.Empty;
     }
 
     [RelayCommand]

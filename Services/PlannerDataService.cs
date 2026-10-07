@@ -41,7 +41,7 @@ public class PlannerDataService : IPlannerDataService
             {
                 using var stream = File.OpenRead(_storagePath);
                 var loaded = await JsonSerializer.DeserializeAsync(stream, PlannerJsonContext.Default.PlannerDataPackage);
-                if (loaded != null && loaded.Tasks.Count > 0)
+                if (loaded != null)
                 {
                     _cachedData = loaded;
                     return _cachedData;
@@ -196,7 +196,18 @@ public class PlannerDataService : IPlannerDataService
         return proj;
     }
 
-    public async Task<PlannerTask> AddTaskWithDetailsAsync(string title, string section, DateTime? dueDate, string dueTimeText, string? tag, string tagColor, string notes)
+    public async Task<PlannerTask> AddTaskWithDetailsAsync(
+        string title,
+        string section,
+        DateTime? dueDate,
+        string dueTimeText,
+        string durationText,
+        string? tag,
+        string tagColor,
+        string notes,
+        string? projectId = null,
+        string? projectName = null,
+        string? projectColor = null)
     {
         var data = await LoadDataAsync();
         var task = new PlannerTask
@@ -206,11 +217,26 @@ public class PlannerDataService : IPlannerDataService
             Section = string.IsNullOrWhiteSpace(section) ? "Morning" : section,
             DueDate = dueDate,
             DueTimeText = dueTimeText ?? string.Empty,
+            DurationText = durationText ?? string.Empty,
             PrimaryTag = tag ?? string.Empty,
             TagColorHex = string.IsNullOrWhiteSpace(tagColor) ? "#005FB8" : tagColor,
             Notes = notes ?? string.Empty,
+            ProjectId = projectId ?? string.Empty,
+            ProjectName = projectName ?? string.Empty,
+            ProjectColor = projectColor ?? "#005FB8",
             IsCompleted = false
         };
+
+        if (!string.IsNullOrEmpty(projectId))
+        {
+            var project = data.Projects.FirstOrDefault(p => p.Id == projectId);
+            if (project != null)
+            {
+                project.TaskCount++;
+                if (string.IsNullOrEmpty(projectName)) task.ProjectName = project.Name;
+                if (string.IsNullOrEmpty(projectColor)) task.ProjectColor = project.ColorHex;
+            }
+        }
 
         if (!string.IsNullOrEmpty(tag) && !string.IsNullOrEmpty(tagColor))
         {
@@ -228,6 +254,123 @@ public class PlannerDataService : IPlannerDataService
         data.Tasks.Insert(0, task);
         await SaveDataAsync(data);
         return task;
+    }
+
+    public async Task<PlannerTask?> UpdateTaskAsync(
+        string taskId,
+        string title,
+        string section,
+        DateTime? dueDate,
+        string dueTimeText,
+        string durationText,
+        string? tag,
+        string tagColor,
+        string notes,
+        string? projectId,
+        string? projectName,
+        string? projectColor)
+    {
+        var data = await LoadDataAsync();
+        var task = data.Tasks.FirstOrDefault(t => t.Id == taskId);
+        if (task == null) return null;
+
+        string oldProjectId = task.ProjectId;
+
+        task.Title = title;
+        task.Section = string.IsNullOrWhiteSpace(section) ? "Morning" : section;
+        task.DueDate = dueDate;
+        task.DueTimeText = dueTimeText ?? string.Empty;
+        task.DurationText = durationText ?? string.Empty;
+        task.PrimaryTag = tag ?? string.Empty;
+        task.TagColorHex = string.IsNullOrWhiteSpace(tagColor) ? "#005FB8" : tagColor;
+        task.Notes = notes ?? string.Empty;
+        task.ProjectId = projectId ?? string.Empty;
+        task.ProjectName = projectName ?? string.Empty;
+        task.ProjectColor = projectColor ?? "#005FB8";
+
+        if (oldProjectId != task.ProjectId)
+        {
+            if (!string.IsNullOrEmpty(oldProjectId))
+            {
+                var oldProj = data.Projects.FirstOrDefault(p => p.Id == oldProjectId);
+                if (oldProj != null)
+                {
+                    oldProj.TaskCount = data.Tasks.Count(t => t.ProjectId == oldProjectId);
+                    oldProj.CompletedCount = data.Tasks.Count(t => t.ProjectId == oldProjectId && t.IsCompleted);
+                }
+            }
+            if (!string.IsNullOrEmpty(task.ProjectId))
+            {
+                var newProj = data.Projects.FirstOrDefault(p => p.Id == task.ProjectId);
+                if (newProj != null)
+                {
+                    newProj.TaskCount = data.Tasks.Count(t => t.ProjectId == task.ProjectId);
+                    newProj.CompletedCount = data.Tasks.Count(t => t.ProjectId == task.ProjectId && t.IsCompleted);
+                }
+            }
+        }
+
+        if (!string.IsNullOrEmpty(tag) && !string.IsNullOrEmpty(tagColor))
+        {
+            var existingTag = data.Tags.FirstOrDefault(t => t.Name.Equals(tag, StringComparison.OrdinalIgnoreCase));
+            if (existingTag == null)
+            {
+                data.Tags.Add(new PlannerTag { Name = tag, ColorHex = tagColor });
+            }
+            else
+            {
+                existingTag.ColorHex = tagColor;
+            }
+        }
+
+        await SaveDataAsync(data);
+        return task;
+    }
+
+    public async Task DeleteSubTaskAsync(string taskId, string subTaskId)
+    {
+        var data = await LoadDataAsync();
+        var task = data.Tasks.FirstOrDefault(t => t.Id == taskId);
+        if (task != null)
+        {
+            var sub = task.Subtasks.FirstOrDefault(s => s.Id == subTaskId);
+            if (sub != null)
+            {
+                task.Subtasks.Remove(sub);
+                await SaveDataAsync(data);
+            }
+        }
+    }
+
+    public async Task DeleteProjectAsync(string projectId)
+    {
+        var data = await LoadDataAsync();
+        var project = data.Projects.FirstOrDefault(p => p.Id == projectId);
+        if (project != null)
+        {
+            data.Projects.Remove(project);
+            foreach (var task in data.Tasks.Where(t => t.ProjectId == projectId))
+            {
+                task.ProjectId = string.Empty;
+                task.ProjectName = string.Empty;
+            }
+            await SaveDataAsync(data);
+        }
+    }
+
+    public async Task RenameProjectAsync(string projectId, string newName)
+    {
+        var data = await LoadDataAsync();
+        var project = data.Projects.FirstOrDefault(p => p.Id == projectId);
+        if (project != null)
+        {
+            project.Name = newName;
+            foreach (var task in data.Tasks.Where(t => t.ProjectId == projectId))
+            {
+                task.ProjectName = newName;
+            }
+            await SaveDataAsync(data);
+        }
     }
 
     public async Task AddOrUpdateTagAsync(string name, string colorHex)

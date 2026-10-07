@@ -11,7 +11,15 @@ public class BoolToVisibilityConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, string language)
     {
-        bool b = value is bool flag && flag;
+        bool b = value switch
+        {
+            bool flag => flag,
+            int count => count > 0,
+            long lCount => lCount > 0,
+            double dCount => dCount > 0,
+            _ => false
+        };
+
         if (parameter is string param && param.Equals("inverse", StringComparison.OrdinalIgnoreCase))
         {
             b = !b;
