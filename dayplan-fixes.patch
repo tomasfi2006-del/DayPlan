@@ -1,0 +1,1321 @@
+diff --git a/App.xaml.cs b/App.xaml.cs
+index 8476e13..ef2da81 100644
+--- a/App.xaml.cs
++++ b/App.xaml.cs
+@@ -41,7 +41,11 @@ public partial class App : Application
+         _singleInstanceMutex = new Mutex(true, AppMutexName, out bool isNewInstance);
+         if (!isNewInstance)
+         {
+-            // Another instance is already running
++            // Another instance is already running: bring it to the front and exit,
++            // otherwise both instances would overwrite each other's planner_data.json.
++            Win32Interop.BringExistingWindowToFront("Planner");
++            Environment.Exit(0);
++            return;
+         }
+ 
+         ConfigureServices();
+diff --git a/MainPage.xaml.cs b/MainPage.xaml.cs
+index 7f179aa..4c51ec0 100644
+--- a/MainPage.xaml.cs
++++ b/MainPage.xaml.cs
+@@ -20,6 +20,9 @@ public sealed partial class MainPage : Page
+         InitializeComponent();
+     }
+ 
++    private bool _handlersAttached;
++    private bool _dialogOpen;
++
+     private async void OnPageLoaded(object sender, RoutedEventArgs e)
+     {
+         await ViewModel.InitializeAsync();
+@@ -35,6 +38,10 @@ public sealed partial class MainPage : Page
+             EditTaskModalDialog.XamlRoot = XamlRoot;
+         }
+ 
++        // Loaded can fire more than once; the ViewModel is a singleton, so only subscribe once.
++        if (_handlersAttached) return;
++        _handlersAttached = true;
++
+         ViewModel.ThemeChanged += (s, theme) =>
+         {
+             RequestedTheme = theme;
+@@ -45,28 +52,18 @@ public sealed partial class MainPage : Page
+         {
+             if (args.PropertyName == nameof(ViewModel.IsSettingsOpen) && ViewModel.IsSettingsOpen)
+             {
+-                if (SettingsModalDialog.XamlRoot == null && XamlRoot != null)
+-                {
+-                    SettingsModalDialog.XamlRoot = XamlRoot;
+-                }
+-                await SettingsModalDialog.ShowAsync();
++                await ShowDialogAsync(SettingsModalDialog);
+                 ViewModel.CloseSettings();
+             }
+             else if (args.PropertyName == nameof(ViewModel.IsNewListDialogOpen) && ViewModel.IsNewListDialogOpen)
+             {
+-                if (NewListModalDialog.XamlRoot == null && XamlRoot != null)
+-                {
+-                    NewListModalDialog.XamlRoot = XamlRoot;
+-                }
+-                await NewListModalDialog.ShowAsync();
++                await ShowDialogAsync(NewListModalDialog);
++                // Cancel / Esc / Create all end up here: reset the flag so the dialog can open again.
++                ViewModel.CloseNewListDialog();
+             }
+             else if (args.PropertyName == nameof(ViewModel.IsCreateTaskDialogOpen) && ViewModel.IsCreateTaskDialogOpen)
+             {
+-                if (CreateTaskModalDialog.XamlRoot == null && XamlRoot != null)
+-                {
+-                    CreateTaskModalDialog.XamlRoot = XamlRoot;
+-                }
+-                var result = await CreateTaskModalDialog.ShowAsync();
++                var result = await ShowDialogAsync(CreateTaskModalDialog);
+                 if (result != ContentDialogResult.Primary)
+                 {
+                     ViewModel.CloseCreateTaskDialog();
+@@ -74,11 +71,7 @@ public sealed partial class MainPage : Page
+             }
+             else if (args.PropertyName == nameof(ViewModel.IsEditTaskDialogOpen) && ViewModel.IsEditTaskDialogOpen)
+             {
+-                if (EditTaskModalDialog.XamlRoot == null && XamlRoot != null)
+-                {
+-                    EditTaskModalDialog.XamlRoot = XamlRoot;
+-                }
+-                var result = await EditTaskModalDialog.ShowAsync();
++                var result = await ShowDialogAsync(EditTaskModalDialog);
+                 if (result != ContentDialogResult.Primary)
+                 {
+                     ViewModel.CloseEditTaskDialog();
+@@ -87,6 +80,33 @@ public sealed partial class MainPage : Page
+         };
+     }
+ 
++    /// <summary>
++    /// WinUI allows a single open ContentDialog; a second ShowAsync throws. Skip (returns null) instead of crashing,
++    /// e.g. when a keyboard accelerator tries to open a dialog while another one is showing.
++    /// </summary>
++    private async Task<ContentDialogResult?> ShowDialogAsync(ContentDialog dialog)
++    {
++        if (_dialogOpen) return null;
++        _dialogOpen = true;
++        try
++        {
++            if (dialog.XamlRoot == null && XamlRoot != null)
++            {
++                dialog.XamlRoot = XamlRoot;
++            }
++            return await dialog.ShowAsync();
++        }
++        catch (Exception ex)
++        {
++            System.Diagnostics.Debug.WriteLine($"[MainPage] Dialog failed to open: {ex}");
++            return null;
++        }
++        finally
++        {
++            _dialogOpen = false;
++        }
++    }
++
+     private void OnNavInboxClicked(object sender, RoutedEventArgs e) => ViewModel.SelectNav("Inbox");
+     private void OnNavTodayClicked(object sender, RoutedEventArgs e) => ViewModel.SelectNav("Today");
+     private void OnNavUpcomingClicked(object sender, RoutedEventArgs e) => ViewModel.SelectNav("Upcoming");
+diff --git a/Native/Win32Interop.cs b/Native/Win32Interop.cs
+index f72af6f..5b68cb0 100644
+--- a/Native/Win32Interop.cs
++++ b/Native/Win32Interop.cs
+@@ -55,6 +55,9 @@ public static class Win32Interop
+     [return: MarshalAs(UnmanagedType.Bool)]
+     public static extern bool SetForegroundWindow(nint hWnd);
+ 
++    [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
++    public static extern nint FindWindow(string? lpClassName, string? lpWindowName);
++
+     [DllImport("dwmapi.dll")]
+     public static extern int DwmSetWindowAttribute(
+         nint hwnd,
+@@ -62,6 +65,21 @@ public static class Win32Interop
+         ref int pvAttribute,
+         int cbAttribute);
+ 
++    /// <summary>
++    /// Restores and focuses the top-level window with the given title, if it exists.
++    /// </summary>
++    public static bool BringExistingWindowToFront(string windowTitle)
++    {
++        nint hWnd = FindWindow(null, windowTitle);
++        if (hWnd == 0)
++        {
++            return false;
++        }
++
++        ShowWindow(hWnd, SW_RESTORE);
++        return SetForegroundWindow(hWnd);
++    }
++
+     /// <summary>
+     /// Sets dark mode title bar styling via DwmSetWindowAttribute.
+     /// </summary>
+diff --git a/Services/PlannerDataService.cs b/Services/PlannerDataService.cs
+index afde845..7a8c6b1 100644
+--- a/Services/PlannerDataService.cs
++++ b/Services/PlannerDataService.cs
+@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
+ using System.IO;
+ using System.Linq;
+ using System.Text.Json;
++using System.Threading;
+ using System.Threading.Tasks;
+ using Planner.Models;
+ 
+@@ -11,13 +12,10 @@ namespace Planner.Services;
+ 
+ public class PlannerDataService : IPlannerDataService
+ {
+-    private static readonly JsonSerializerOptions JsonOptions = new()
+-    {
+-        WriteIndented = true,
+-        PropertyNameCaseInsensitive = true
+-    };
+-
+     private PlannerDataPackage? _cachedData;
++    // _gate serializes whole load -> mutate -> save operations; _ioGate serializes file/cache access.
++    private readonly SemaphoreSlim _gate = new(1, 1);
++    private readonly SemaphoreSlim _ioGate = new(1, 1);
+     private readonly ISettingsService _settingsService;
+     private string _storagePath;
+ 
+@@ -34,35 +32,59 @@ public class PlannerDataService : IPlannerDataService
+ 
+     public async Task<PlannerDataPackage> LoadDataAsync()
+     {
+-        if (_cachedData != null)
++        await _ioGate.WaitAsync();
++        try
+         {
+-            return _cachedData;
+-        }
++            if (_cachedData != null)
++            {
++                return _cachedData;
++            }
+ 
+-        if (File.Exists(_storagePath))
+-        {
+-            try
++            if (File.Exists(_storagePath))
+             {
+-                using var stream = File.OpenRead(_storagePath);
+-                var loaded = await JsonSerializer.DeserializeAsync(stream, PlannerJsonContext.Default.PlannerDataPackage);
+-                if (loaded != null)
++                try
+                 {
+-                    _cachedData = loaded;
+-                    return _cachedData;
++                    using var stream = File.OpenRead(_storagePath);
++                    var loaded = await JsonSerializer.DeserializeAsync(stream, PlannerJsonContext.Default.PlannerDataPackage);
++                    if (loaded != null)
++                    {
++                        _cachedData = loaded;
++                        return _cachedData;
++                    }
++                }
++                catch (Exception ex)
++                {
++                    // Never overwrite a file we could not read: keep a copy of it first.
++                    System.Diagnostics.Debug.WriteLine($"[PlannerDataService] Failed to read '{_storagePath}': {ex}");
++                    BackupUnreadableFile();
+                 }
+             }
+-            catch
+-            {
+-                // Fallback to seeding initial data
+-            }
+-        }
+ 
+-        _cachedData = SeedInitialData();
+-        await SaveDataAsync(_cachedData);
+-        return _cachedData;
++            _cachedData = SeedInitialData();
++            await SaveCoreAsync(_cachedData);
++            return _cachedData;
++        }
++        finally
++        {
++            _ioGate.Release();
++        }
+     }
+ 
+     public async Task SaveDataAsync(PlannerDataPackage data)
++    {
++        await _ioGate.WaitAsync();
++        try
++        {
++            await SaveCoreAsync(data);
++        }
++        finally
++        {
++            _ioGate.Release();
++        }
++    }
++
++    // Must be called with _ioGate held.
++    private async Task SaveCoreAsync(PlannerDataPackage data)
+     {
+         _cachedData = data;
+         string tempPath = _storagePath + ".tmp";
+@@ -77,127 +99,207 @@ public class PlannerDataService : IPlannerDataService
+             await JsonSerializer.SerializeAsync(fs, data, PlannerJsonContext.Default.PlannerDataPackage);
+         }
+ 
++        // Keep the previous good version as a rolling backup.
++        try
++        {
++            if (File.Exists(_storagePath))
++            {
++                File.Copy(_storagePath, _storagePath + ".bak", overwrite: true);
++            }
++        }
++        catch (Exception ex)
++        {
++            System.Diagnostics.Debug.WriteLine($"[PlannerDataService] Backup failed: {ex.Message}");
++        }
++
+         File.Move(tempPath, _storagePath, overwrite: true);
+     }
+ 
+-    public async Task<PlannerTask> AddTaskAsync(string title, string section = "Morning", string? projectId = null, string? tag = null)
++    private void BackupUnreadableFile()
+     {
+-        var data = await LoadDataAsync();
+-        var task = new PlannerTask
+-        {
+-            Id = Guid.NewGuid().ToString("N"),
+-            Title = title,
+-            Section = section,
+-            PrimaryTag = tag ?? string.Empty,
+-            DueTimeText = section == "Morning" ? "Today" : (section == "Afternoon" ? "2:00 PM" : "Tonight"),
+-            IsCompleted = false
+-        };
+-
+-        if (!string.IsNullOrEmpty(projectId))
++        try
+         {
+-            var project = data.Projects.FirstOrDefault(p => p.Id == projectId);
+-            if (project != null)
+-            {
+-                task.ProjectId = project.Id;
+-                task.ProjectName = project.Name;
+-                task.ProjectColor = project.ColorHex;
+-                project.TaskCount++;
+-            }
++            string backup = $"{_storagePath}.corrupt-{DateTime.Now:yyyyMMdd-HHmmss}";
++            File.Copy(_storagePath, backup, overwrite: true);
++        }
++        catch (Exception ex)
++        {
++            System.Diagnostics.Debug.WriteLine($"[PlannerDataService] Could not back up unreadable file: {ex.Message}");
+         }
+-
+-        data.Tasks.Insert(0, task);
+-        await SaveDataAsync(data);
+-        return task;
+     }
+ 
+-    public async Task ToggleTaskCompletionAsync(string taskId)
++    public async Task<PlannerTask> AddTaskAsync(string title, string section = "Morning", string? projectId = null, string? tag = null)
+     {
+-        var data = await LoadDataAsync();
+-        var task = data.Tasks.FirstOrDefault(t => t.Id == taskId);
+-        if (task != null)
++        await _gate.WaitAsync();
++        try
+         {
+-            task.IsCompleted = !task.IsCompleted;
+-            task.CompletedAt = task.IsCompleted ? DateTime.Now : null;
++            var data = await LoadDataAsync();
++            var task = new PlannerTask
++            {
++                Id = Guid.NewGuid().ToString("N"),
++                Title = title,
++                Section = section,
++                PrimaryTag = tag ?? string.Empty,
++                DueTimeText = section switch
++                {
++                    "Morning" => "Today",
++                    "Afternoon" => "2:00 PM",
++                    "Evening" => "Tonight",
++                    _ => string.Empty
++                },
++                IsCompleted = false
++            };
+ 
+-            if (!string.IsNullOrEmpty(task.ProjectId))
++            if (!string.IsNullOrEmpty(projectId))
+             {
+-                var project = data.Projects.FirstOrDefault(p => p.Id == task.ProjectId);
++                var project = data.Projects.FirstOrDefault(p => p.Id == projectId);
+                 if (project != null)
+                 {
+-                    project.CompletedCount = data.Tasks.Count(t => t.ProjectId == project.Id && t.IsCompleted);
++                    task.ProjectId = project.Id;
++                    task.ProjectName = project.Name;
++                    task.ProjectColor = project.ColorHex;
++                    project.TaskCount++;
+                 }
+             }
+ 
++            data.Tasks.Insert(0, task);
+             await SaveDataAsync(data);
++            return task;
++        }
++        finally
++        {
++            _gate.Release();
++        }
++    }
++
++    public async Task ToggleTaskCompletionAsync(string taskId)
++    {
++        await _gate.WaitAsync();
++        try
++        {
++            var data = await LoadDataAsync();
++            var task = data.Tasks.FirstOrDefault(t => t.Id == taskId);
++            if (task != null)
++            {
++                task.IsCompleted = !task.IsCompleted;
++                task.CompletedAt = task.IsCompleted ? DateTime.Now : null;
++
++                if (!string.IsNullOrEmpty(task.ProjectId))
++                {
++                    var project = data.Projects.FirstOrDefault(p => p.Id == task.ProjectId);
++                    if (project != null)
++                    {
++                        project.CompletedCount = data.Tasks.Count(t => t.ProjectId == project.Id && t.IsCompleted);
++                    }
++                }
++
++                await SaveDataAsync(data);
++            }
++        }
++        finally
++        {
++            _gate.Release();
+         }
+     }
+ 
+     public async Task DeleteTaskAsync(string taskId)
+     {
+-        var data = await LoadDataAsync();
+-        var task = data.Tasks.FirstOrDefault(t => t.Id == taskId);
+-        if (task != null)
++        await _gate.WaitAsync();
++        try
+         {
+-            data.Tasks.Remove(task);
+-            if (!string.IsNullOrEmpty(task.ProjectId))
++            var data = await LoadDataAsync();
++            var task = data.Tasks.FirstOrDefault(t => t.Id == taskId);
++            if (task != null)
+             {
+-                var project = data.Projects.FirstOrDefault(p => p.Id == task.ProjectId);
+-                if (project != null)
++                data.Tasks.Remove(task);
++                if (!string.IsNullOrEmpty(task.ProjectId))
+                 {
+-                    project.TaskCount = data.Tasks.Count(t => t.ProjectId == project.Id);
+-                    project.CompletedCount = data.Tasks.Count(t => t.ProjectId == project.Id && t.IsCompleted);
++                    var project = data.Projects.FirstOrDefault(p => p.Id == task.ProjectId);
++                    if (project != null)
++                    {
++                        project.TaskCount = data.Tasks.Count(t => t.ProjectId == project.Id);
++                        project.CompletedCount = data.Tasks.Count(t => t.ProjectId == project.Id && t.IsCompleted);
++                    }
+                 }
++                await SaveDataAsync(data);
+             }
+-            await SaveDataAsync(data);
++        }
++        finally
++        {
++            _gate.Release();
+         }
+     }
+ 
+     public async Task AddSubTaskAsync(string taskId, string subTaskTitle)
+     {
+-        var data = await LoadDataAsync();
+-        var task = data.Tasks.FirstOrDefault(t => t.Id == taskId);
+-        if (task != null)
++        await _gate.WaitAsync();
++        try
+         {
+-            task.Subtasks.Add(new PlannerSubTask
++            var data = await LoadDataAsync();
++            var task = data.Tasks.FirstOrDefault(t => t.Id == taskId);
++            if (task != null)
+             {
+-                Id = Guid.NewGuid().ToString("N"),
+-                Title = subTaskTitle,
+-                IsCompleted = false
+-            });
+-            await SaveDataAsync(data);
++                task.Subtasks.Add(new PlannerSubTask
++                {
++                    Id = Guid.NewGuid().ToString("N"),
++                    Title = subTaskTitle,
++                    IsCompleted = false
++                });
++                await SaveDataAsync(data);
++            }
++        }
++        finally
++        {
++            _gate.Release();
+         }
+     }
+ 
+     public async Task ToggleSubTaskAsync(string taskId, string subTaskId)
+     {
+-        var data = await LoadDataAsync();
+-        var task = data.Tasks.FirstOrDefault(t => t.Id == taskId);
+-        if (task != null)
++        await _gate.WaitAsync();
++        try
+         {
+-            var sub = task.Subtasks.FirstOrDefault(s => s.Id == subTaskId);
+-            if (sub != null)
++            var data = await LoadDataAsync();
++            var task = data.Tasks.FirstOrDefault(t => t.Id == taskId);
++            if (task != null)
+             {
+-                sub.IsCompleted = !sub.IsCompleted;
+-                await SaveDataAsync(data);
++                var sub = task.Subtasks.FirstOrDefault(s => s.Id == subTaskId);
++                if (sub != null)
++                {
++                    sub.IsCompleted = !sub.IsCompleted;
++                    await SaveDataAsync(data);
++                }
+             }
+         }
++        finally
++        {
++            _gate.Release();
++        }
+     }
+ 
+     public async Task<PlannerProject> AddProjectAsync(string name, string area, string colorHex)
+     {
+-        var data = await LoadDataAsync();
+-        var proj = new PlannerProject
+-        {
+-            Id = Guid.NewGuid().ToString("N"),
+-            Name = name,
+-            Area = area,
+-            ColorHex = colorHex,
+-            TaskCount = 0,
+-            CompletedCount = 0
+-        };
+-        data.Projects.Add(proj);
+-        await SaveDataAsync(data);
+-        return proj;
++        await _gate.WaitAsync();
++        try
++        {
++            var data = await LoadDataAsync();
++            var proj = new PlannerProject
++            {
++                Id = Guid.NewGuid().ToString("N"),
++                Name = name,
++                Area = area,
++                ColorHex = colorHex,
++                TaskCount = 0,
++                CompletedCount = 0
++            };
++            data.Projects.Add(proj);
++            await SaveDataAsync(data);
++            return proj;
++        }
++        finally
++        {
++            _gate.Release();
++        }
+     }
+ 
+     public async Task<PlannerTask> AddTaskWithDetailsAsync(
+@@ -215,79 +317,87 @@ public class PlannerDataService : IPlannerDataService
+         IEnumerable<PlannerTag>? tags = null,
+         IEnumerable<PlannerSubTask>? subtasks = null)
+     {
+-        var data = await LoadDataAsync();
+-        var task = new PlannerTask
+-        {
+-            Id = Guid.NewGuid().ToString("N"),
+-            Title = title,
+-            Section = string.IsNullOrWhiteSpace(section) ? "Morning" : section,
+-            DueDate = dueDate,
+-            DueTimeText = dueTimeText ?? string.Empty,
+-            DurationText = durationText ?? string.Empty,
+-            PrimaryTag = tag ?? string.Empty,
+-            TagColorHex = string.IsNullOrWhiteSpace(tagColor) ? "#005FB8" : tagColor,
+-            Notes = notes ?? string.Empty,
+-            ProjectId = projectId ?? string.Empty,
+-            ProjectName = projectName ?? string.Empty,
+-            ProjectColor = projectColor ?? "#005FB8",
+-            IsCompleted = false
+-        };
+-
+-        if (tags != null)
++        await _gate.WaitAsync();
++        try
+         {
+-            foreach (var tg in tags)
+-            {
+-                task.Tags.Add(new PlannerTag { Id = Guid.NewGuid().ToString("N"), Name = tg.Name, ColorHex = tg.ColorHex });
+-                var existing = data.Tags.FirstOrDefault(t => t.Name.Equals(tg.Name, StringComparison.OrdinalIgnoreCase));
+-                if (existing == null) data.Tags.Add(new PlannerTag { Name = tg.Name, ColorHex = tg.ColorHex });
+-            }
+-            if (task.Tags.Count > 0 && string.IsNullOrEmpty(task.PrimaryTag))
++            var data = await LoadDataAsync();
++            var task = new PlannerTask
+             {
+-                task.PrimaryTag = task.Tags[0].Name;
+-                task.TagColorHex = task.Tags[0].ColorHex;
+-            }
+-        }
++                Id = Guid.NewGuid().ToString("N"),
++                Title = title,
++                Section = string.IsNullOrWhiteSpace(section) ? "Morning" : section,
++                DueDate = dueDate,
++                DueTimeText = dueTimeText ?? string.Empty,
++                DurationText = durationText ?? string.Empty,
++                PrimaryTag = tag ?? string.Empty,
++                TagColorHex = string.IsNullOrWhiteSpace(tagColor) ? "#005FB8" : tagColor,
++                Notes = notes ?? string.Empty,
++                ProjectId = projectId ?? string.Empty,
++                ProjectName = projectName ?? string.Empty,
++                ProjectColor = projectColor ?? "#005FB8",
++                IsCompleted = false
++            };
+ 
+-        if (subtasks != null)
+-        {
+-            foreach (var st in subtasks)
++            if (tags != null)
+             {
+-                task.Subtasks.Add(new PlannerSubTask
++                foreach (var tg in tags)
+                 {
+-                    Id = Guid.NewGuid().ToString("N"),
+-                    Title = st.Title,
+-                    IsCompleted = st.IsCompleted
+-                });
++                    task.Tags.Add(new PlannerTag { Id = Guid.NewGuid().ToString("N"), Name = tg.Name, ColorHex = tg.ColorHex });
++                    var existing = data.Tags.FirstOrDefault(t => t.Name.Equals(tg.Name, StringComparison.OrdinalIgnoreCase));
++                    if (existing == null) data.Tags.Add(new PlannerTag { Name = tg.Name, ColorHex = tg.ColorHex });
++                }
++                if (task.Tags.Count > 0 && string.IsNullOrEmpty(task.PrimaryTag))
++                {
++                    task.PrimaryTag = task.Tags[0].Name;
++                    task.TagColorHex = task.Tags[0].ColorHex;
++                }
+             }
+-        }
+ 
+-        if (!string.IsNullOrEmpty(projectId))
+-        {
+-            var project = data.Projects.FirstOrDefault(p => p.Id == projectId);
+-            if (project != null)
++            if (subtasks != null)
+             {
+-                project.TaskCount++;
+-                if (string.IsNullOrEmpty(projectName)) task.ProjectName = project.Name;
+-                if (string.IsNullOrEmpty(projectColor)) task.ProjectColor = project.ColorHex;
++                foreach (var st in subtasks)
++                {
++                    task.Subtasks.Add(new PlannerSubTask
++                    {
++                        Id = Guid.NewGuid().ToString("N"),
++                        Title = st.Title,
++                        IsCompleted = st.IsCompleted
++                    });
++                }
+             }
+-        }
+ 
+-        if (!string.IsNullOrEmpty(tag) && !string.IsNullOrEmpty(tagColor))
+-        {
+-            var existingTag = data.Tags.FirstOrDefault(t => t.Name.Equals(tag, StringComparison.OrdinalIgnoreCase));
+-            if (existingTag == null)
++            if (!string.IsNullOrEmpty(projectId))
+             {
+-                data.Tags.Add(new PlannerTag { Name = tag, ColorHex = tagColor });
++                var project = data.Projects.FirstOrDefault(p => p.Id == projectId);
++                if (project != null)
++                {
++                    project.TaskCount++;
++                    if (string.IsNullOrEmpty(projectName)) task.ProjectName = project.Name;
++                    if (string.IsNullOrEmpty(projectColor)) task.ProjectColor = project.ColorHex;
++                }
+             }
+-            else
++
++            if (!string.IsNullOrEmpty(tag) && !string.IsNullOrEmpty(tagColor))
+             {
+-                existingTag.ColorHex = tagColor;
++                var existingTag = data.Tags.FirstOrDefault(t => t.Name.Equals(tag, StringComparison.OrdinalIgnoreCase));
++                if (existingTag == null)
++                {
++                    data.Tags.Add(new PlannerTag { Name = tag, ColorHex = tagColor });
++                }
++                else
++                {
++                    existingTag.ColorHex = tagColor;
++                }
+             }
+-        }
+ 
+-        data.Tasks.Insert(0, task);
+-        await SaveDataAsync(data);
+-        return task;
++            data.Tasks.Insert(0, task);
++            await SaveDataAsync(data);
++            return task;
++        }
++        finally
++        {
++            _gate.Release();
++        }
+     }
+ 
+     public async Task<PlannerTask?> UpdateTaskAsync(
+@@ -306,215 +416,284 @@ public class PlannerDataService : IPlannerDataService
+         IEnumerable<PlannerTag>? tags = null,
+         IEnumerable<PlannerSubTask>? subtasks = null)
+     {
+-        var data = await LoadDataAsync();
+-        var task = data.Tasks.FirstOrDefault(t => t.Id == taskId);
+-        if (task == null) return null;
+-
+-        string oldProjectId = task.ProjectId;
+-
+-        task.Title = title;
+-        task.Section = string.IsNullOrWhiteSpace(section) ? "Morning" : section;
+-        task.DueDate = dueDate;
+-        task.DueTimeText = dueTimeText ?? string.Empty;
+-        task.DurationText = durationText ?? string.Empty;
+-        task.PrimaryTag = tag ?? string.Empty;
+-        task.TagColorHex = string.IsNullOrWhiteSpace(tagColor) ? "#005FB8" : tagColor;
+-        task.Notes = notes ?? string.Empty;
+-        task.ProjectId = projectId ?? string.Empty;
+-        task.ProjectName = projectName ?? string.Empty;
+-        task.ProjectColor = projectColor ?? "#005FB8";
+-
+-        if (tags != null)
+-        {
+-            task.Tags.Clear();
+-            foreach (var tg in tags)
+-            {
+-                task.Tags.Add(new PlannerTag { Id = Guid.NewGuid().ToString("N"), Name = tg.Name, ColorHex = tg.ColorHex });
+-                var existing = data.Tags.FirstOrDefault(t => t.Name.Equals(tg.Name, StringComparison.OrdinalIgnoreCase));
+-                if (existing == null) data.Tags.Add(new PlannerTag { Name = tg.Name, ColorHex = tg.ColorHex });
+-            }
+-            if (task.Tags.Count > 0)
++        await _gate.WaitAsync();
++        try
++        {
++            var data = await LoadDataAsync();
++            var task = data.Tasks.FirstOrDefault(t => t.Id == taskId);
++            if (task == null) return null;
++
++            string oldProjectId = task.ProjectId;
++
++            task.Title = title;
++            task.Section = string.IsNullOrWhiteSpace(section) ? "Morning" : section;
++            task.DueDate = dueDate;
++            task.DueTimeText = dueTimeText ?? string.Empty;
++            task.DurationText = durationText ?? string.Empty;
++            task.PrimaryTag = tag ?? string.Empty;
++            task.TagColorHex = string.IsNullOrWhiteSpace(tagColor) ? "#005FB8" : tagColor;
++            task.Notes = notes ?? string.Empty;
++            task.ProjectId = projectId ?? string.Empty;
++            task.ProjectName = projectName ?? string.Empty;
++            task.ProjectColor = projectColor ?? "#005FB8";
++
++            if (tags != null)
+             {
+-                task.PrimaryTag = task.Tags[0].Name;
+-                task.TagColorHex = task.Tags[0].ColorHex;
++                task.Tags.Clear();
++                foreach (var tg in tags)
++                {
++                    task.Tags.Add(new PlannerTag { Id = Guid.NewGuid().ToString("N"), Name = tg.Name, ColorHex = tg.ColorHex });
++                    var existing = data.Tags.FirstOrDefault(t => t.Name.Equals(tg.Name, StringComparison.OrdinalIgnoreCase));
++                    if (existing == null) data.Tags.Add(new PlannerTag { Name = tg.Name, ColorHex = tg.ColorHex });
++                }
++                if (task.Tags.Count > 0)
++                {
++                    task.PrimaryTag = task.Tags[0].Name;
++                    task.TagColorHex = task.Tags[0].ColorHex;
++                }
++                else
++                {
++                    task.PrimaryTag = string.Empty;
++                    task.TagColorHex = "#005FB8";
++                }
+             }
+-        }
+ 
+-        if (subtasks != null)
+-        {
+-            task.Subtasks.Clear();
+-            foreach (var st in subtasks)
++            if (subtasks != null)
+             {
+-                task.Subtasks.Add(new PlannerSubTask
++                task.Subtasks.Clear();
++                foreach (var st in subtasks)
+                 {
+-                    Id = Guid.NewGuid().ToString("N"),
+-                    Title = st.Title,
+-                    IsCompleted = st.IsCompleted
+-                });
++                    task.Subtasks.Add(new PlannerSubTask
++                    {
++                        Id = Guid.NewGuid().ToString("N"),
++                        Title = st.Title,
++                        IsCompleted = st.IsCompleted
++                    });
++                }
+             }
+-        }
+ 
+-        if (oldProjectId != task.ProjectId)
+-        {
+-            if (!string.IsNullOrEmpty(oldProjectId))
++            if (oldProjectId != task.ProjectId)
+             {
+-                var oldProj = data.Projects.FirstOrDefault(p => p.Id == oldProjectId);
+-                if (oldProj != null)
++                if (!string.IsNullOrEmpty(oldProjectId))
++                {
++                    var oldProj = data.Projects.FirstOrDefault(p => p.Id == oldProjectId);
++                    if (oldProj != null)
++                    {
++                        oldProj.TaskCount = data.Tasks.Count(t => t.ProjectId == oldProjectId);
++                        oldProj.CompletedCount = data.Tasks.Count(t => t.ProjectId == oldProjectId && t.IsCompleted);
++                    }
++                }
++                if (!string.IsNullOrEmpty(task.ProjectId))
+                 {
+-                    oldProj.TaskCount = data.Tasks.Count(t => t.ProjectId == oldProjectId);
+-                    oldProj.CompletedCount = data.Tasks.Count(t => t.ProjectId == oldProjectId && t.IsCompleted);
++                    var newProj = data.Projects.FirstOrDefault(p => p.Id == task.ProjectId);
++                    if (newProj != null)
++                    {
++                        newProj.TaskCount = data.Tasks.Count(t => t.ProjectId == task.ProjectId);
++                        newProj.CompletedCount = data.Tasks.Count(t => t.ProjectId == task.ProjectId && t.IsCompleted);
++                    }
+                 }
+             }
+-            if (!string.IsNullOrEmpty(task.ProjectId))
++
++            if (!string.IsNullOrEmpty(tag) && !string.IsNullOrEmpty(tagColor))
+             {
+-                var newProj = data.Projects.FirstOrDefault(p => p.Id == task.ProjectId);
+-                if (newProj != null)
++                var existingTag = data.Tags.FirstOrDefault(t => t.Name.Equals(tag, StringComparison.OrdinalIgnoreCase));
++                if (existingTag == null)
+                 {
+-                    newProj.TaskCount = data.Tasks.Count(t => t.ProjectId == task.ProjectId);
+-                    newProj.CompletedCount = data.Tasks.Count(t => t.ProjectId == task.ProjectId && t.IsCompleted);
++                    data.Tags.Add(new PlannerTag { Name = tag, ColorHex = tagColor });
++                }
++                else
++                {
++                    existingTag.ColorHex = tagColor;
+                 }
+             }
+-        }
+ 
+-        if (!string.IsNullOrEmpty(tag) && !string.IsNullOrEmpty(tagColor))
++            await SaveDataAsync(data);
++            return task;
++        }
++        finally
+         {
+-            var existingTag = data.Tags.FirstOrDefault(t => t.Name.Equals(tag, StringComparison.OrdinalIgnoreCase));
+-            if (existingTag == null)
+-            {
+-                data.Tags.Add(new PlannerTag { Name = tag, ColorHex = tagColor });
+-            }
+-            else
+-            {
+-                existingTag.ColorHex = tagColor;
+-            }
++            _gate.Release();
+         }
+-
+-        await SaveDataAsync(data);
+-        return task;
+     }
+ 
+     public async Task DeleteSubTaskAsync(string taskId, string subTaskId)
+     {
+-        var data = await LoadDataAsync();
+-        var task = data.Tasks.FirstOrDefault(t => t.Id == taskId);
+-        if (task != null)
++        await _gate.WaitAsync();
++        try
+         {
+-            var sub = task.Subtasks.FirstOrDefault(s => s.Id == subTaskId);
+-            if (sub != null)
++            var data = await LoadDataAsync();
++            var task = data.Tasks.FirstOrDefault(t => t.Id == taskId);
++            if (task != null)
+             {
+-                task.Subtasks.Remove(sub);
+-                await SaveDataAsync(data);
++                var sub = task.Subtasks.FirstOrDefault(s => s.Id == subTaskId);
++                if (sub != null)
++                {
++                    task.Subtasks.Remove(sub);
++                    await SaveDataAsync(data);
++                }
+             }
+         }
++        finally
++        {
++            _gate.Release();
++        }
+     }
+ 
+     public async Task DeleteProjectAsync(string projectId)
+     {
+-        var data = await LoadDataAsync();
+-        var project = data.Projects.FirstOrDefault(p => p.Id == projectId);
+-        if (project != null)
++        await _gate.WaitAsync();
++        try
+         {
+-            data.Projects.Remove(project);
+-            foreach (var task in data.Tasks.Where(t => t.ProjectId == projectId))
++            var data = await LoadDataAsync();
++            var project = data.Projects.FirstOrDefault(p => p.Id == projectId);
++            if (project != null)
+             {
+-                task.ProjectId = string.Empty;
+-                task.ProjectName = string.Empty;
++                data.Projects.Remove(project);
++                foreach (var task in data.Tasks.Where(t => t.ProjectId == projectId))
++                {
++                    task.ProjectId = string.Empty;
++                    task.ProjectName = string.Empty;
++                }
++                await SaveDataAsync(data);
+             }
+-            await SaveDataAsync(data);
++        }
++        finally
++        {
++            _gate.Release();
+         }
+     }
+ 
+     public async Task RenameProjectAsync(string projectId, string newName)
+     {
+-        var data = await LoadDataAsync();
+-        var project = data.Projects.FirstOrDefault(p => p.Id == projectId);
+-        if (project != null)
++        await _gate.WaitAsync();
++        try
+         {
+-            project.Name = newName;
+-            foreach (var task in data.Tasks.Where(t => t.ProjectId == projectId))
++            var data = await LoadDataAsync();
++            var project = data.Projects.FirstOrDefault(p => p.Id == projectId);
++            if (project != null)
+             {
+-                task.ProjectName = newName;
++                project.Name = newName;
++                foreach (var task in data.Tasks.Where(t => t.ProjectId == projectId))
++                {
++                    task.ProjectName = newName;
++                }
++                await SaveDataAsync(data);
+             }
+-            await SaveDataAsync(data);
++        }
++        finally
++        {
++            _gate.Release();
+         }
+     }
+ 
+     public async Task AddOrUpdateTagAsync(string name, string colorHex)
+     {
+-        var data = await LoadDataAsync();
+-        var existingTag = data.Tags.FirstOrDefault(t => t.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+-        if (existingTag != null)
++        await _gate.WaitAsync();
++        try
+         {
+-            existingTag.ColorHex = colorHex;
++            var data = await LoadDataAsync();
++            var existingTag = data.Tags.FirstOrDefault(t => t.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
++            if (existingTag != null)
++            {
++                existingTag.ColorHex = colorHex;
++            }
++            else
++            {
++                data.Tags.Add(new PlannerTag { Name = name, ColorHex = colorHex });
++            }
++            await SaveDataAsync(data);
+         }
+-        else
++        finally
+         {
+-            data.Tags.Add(new PlannerTag { Name = name, ColorHex = colorHex });
++            _gate.Release();
+         }
+-        await SaveDataAsync(data);
+     }
+ 
+     public async Task AddAreaAsync(string areaName)
+     {
+-        if (string.IsNullOrWhiteSpace(areaName)) return;
+-        var data = await LoadDataAsync();
+-        if (data.Areas == null) data.Areas = new List<string> { "Work", "Personal" };
+-        string trimmed = areaName.Trim();
+-        if (!data.Areas.Any(a => a.Equals(trimmed, StringComparison.OrdinalIgnoreCase)))
++        await _gate.WaitAsync();
++        try
++        {
++            if (string.IsNullOrWhiteSpace(areaName)) return;
++            var data = await LoadDataAsync();
++            if (data.Areas == null) data.Areas = new List<string> { "Work", "Personal" };
++            string trimmed = areaName.Trim();
++            if (!data.Areas.Any(a => a.Equals(trimmed, StringComparison.OrdinalIgnoreCase)))
++            {
++                data.Areas.Add(trimmed);
++                await SaveDataAsync(data);
++            }
++        }
++        finally
+         {
+-            data.Areas.Add(trimmed);
+-            await SaveDataAsync(data);
++            _gate.Release();
+         }
+     }
+ 
+     public async Task DeleteAreaAsync(string areaName)
+     {
+-        if (string.IsNullOrWhiteSpace(areaName)) return;
+-        var data = await LoadDataAsync();
+-        if (data.Areas == null) return;
+-        string trimmed = areaName.Trim();
+-        var match = data.Areas.FirstOrDefault(a => a.Equals(trimmed, StringComparison.OrdinalIgnoreCase));
+-        if (match != null)
+-        {
+-            data.Areas.Remove(match);
+-            var projsToRemove = data.Projects.Where(p => p.Area.Equals(trimmed, StringComparison.OrdinalIgnoreCase)).ToList();
+-            foreach (var p in projsToRemove)
++        await _gate.WaitAsync();
++        try
++        {
++            if (string.IsNullOrWhiteSpace(areaName)) return;
++            var data = await LoadDataAsync();
++            if (data.Areas == null) return;
++            string trimmed = areaName.Trim();
++            var match = data.Areas.FirstOrDefault(a => a.Equals(trimmed, StringComparison.OrdinalIgnoreCase));
++            if (match != null)
+             {
+-                data.Projects.Remove(p);
+-                foreach (var task in data.Tasks.Where(t => t.ProjectId == p.Id))
++                data.Areas.Remove(match);
++                var projsToRemove = data.Projects.Where(p => p.Area.Equals(trimmed, StringComparison.OrdinalIgnoreCase)).ToList();
++                foreach (var p in projsToRemove)
+                 {
+-                    task.ProjectId = string.Empty;
+-                    task.ProjectName = string.Empty;
++                    data.Projects.Remove(p);
++                    foreach (var task in data.Tasks.Where(t => t.ProjectId == p.Id))
++                    {
++                        task.ProjectId = string.Empty;
++                        task.ProjectName = string.Empty;
++                    }
+                 }
++                await SaveDataAsync(data);
+             }
+-            await SaveDataAsync(data);
++        }
++        finally
++        {
++            _gate.Release();
+         }
+     }
+ 
+     public async Task DeleteTagAsync(string tagName)
+     {
+-        if (string.IsNullOrWhiteSpace(tagName)) return;
+-        var data = await LoadDataAsync();
+-        string trimmed = tagName.Trim();
+-        var match = data.Tags.FirstOrDefault(t => t.Name.Equals(trimmed, StringComparison.OrdinalIgnoreCase));
+-        if (match != null)
+-        {
+-            data.Tags.Remove(match);
+-        }
+-        foreach (var task in data.Tasks)
+-        {
+-            var taskTagMatch = task.Tags.FirstOrDefault(t => t.Name.Equals(trimmed, StringComparison.OrdinalIgnoreCase));
+-            if (taskTagMatch != null)
++        await _gate.WaitAsync();
++        try
++        {
++            if (string.IsNullOrWhiteSpace(tagName)) return;
++            var data = await LoadDataAsync();
++            string trimmed = tagName.Trim();
++            var match = data.Tags.FirstOrDefault(t => t.Name.Equals(trimmed, StringComparison.OrdinalIgnoreCase));
++            if (match != null)
+             {
+-                task.Tags.Remove(taskTagMatch);
++                data.Tags.Remove(match);
+             }
+-            if (task.PrimaryTag.Equals(trimmed, StringComparison.OrdinalIgnoreCase))
++            foreach (var task in data.Tasks)
+             {
+-                task.PrimaryTag = task.Tags.Count > 0 ? task.Tags[0].Name : string.Empty;
+-                task.TagColorHex = task.Tags.Count > 0 ? task.Tags[0].ColorHex : "#005FB8";
++                var taskTagMatch = task.Tags.FirstOrDefault(t => t.Name.Equals(trimmed, StringComparison.OrdinalIgnoreCase));
++                if (taskTagMatch != null)
++                {
++                    task.Tags.Remove(taskTagMatch);
++                }
++                if (task.PrimaryTag.Equals(trimmed, StringComparison.OrdinalIgnoreCase))
++                {
++                    task.PrimaryTag = task.Tags.Count > 0 ? task.Tags[0].Name : string.Empty;
++                    task.TagColorHex = task.Tags.Count > 0 ? task.Tags[0].ColorHex : "#005FB8";
++                }
+             }
++            await SaveDataAsync(data);
++        }
++        finally
++        {
++            _gate.Release();
+         }
+-        await SaveDataAsync(data);
+     }
+ 
+     private static PlannerDataPackage SeedInitialData()
+diff --git a/ViewModels/MainViewModel.cs b/ViewModels/MainViewModel.cs
+index 06351c8..16eabd9 100644
+--- a/ViewModels/MainViewModel.cs
++++ b/ViewModels/MainViewModel.cs
+@@ -267,6 +267,60 @@ public partial class MainViewModel : ObservableObject
+     public event EventHandler<ElementTheme>? ThemeChanged;
+ 
+     private PlannerDataPackage? _currentPackage;
++    private DispatcherTimer? _dayRolloverTimer;
++    private DateTime _lastKnownDay = DateTime.Today;
++
++    private static bool IsTodaySection(string? section) =>
++        section is "Morning" or "Afternoon" or "Evening";
++
++    /// <summary>
++    /// A task belongs to the Today list when it sits in a day section, is not scheduled for a future date,
++    /// and (if completed) was completed today. Older completed tasks live in the Logbook.
++    /// </summary>
++    private static bool IsInTodayList(PlannerTask t)
++    {
++        if (!IsTodaySection(t.Section)) return false;
++        DateTime today = DateTime.Today;
++        if (t.DueDate.HasValue && t.DueDate.Value.Date > today) return false;
++        if (t.IsCompleted && t.CompletedAt.HasValue && t.CompletedAt.Value.Date < today) return false;
++        return true;
++    }
++
++    /// <summary>The single day a task counts towards in the weekly load chart.</summary>
++    private static DateTime? EffectiveDay(PlannerTask t, DateTime today)
++    {
++        if (t.IsCompleted) return (t.CompletedAt ?? t.DueDate)?.Date;
++        if (t.DueDate.HasValue)
++        {
++            DateTime due = t.DueDate.Value.Date;
++            return due < today ? today : due; // overdue work lands on today
++        }
++        return IsTodaySection(t.Section) ? today : null;
++    }
++
++    private static int TimeSortKey(string? text) =>
++        DateTime.TryParse(text, out var parsed) ? (int)parsed.TimeOfDay.TotalMinutes : int.MaxValue;
++
++    private void StartDayRolloverTimer()
++    {
++        if (_dayRolloverTimer != null) return;
++        _dayRolloverTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(1) };
++        _dayRolloverTimer.Tick += async (_, _) =>
++        {
++            if (DateTime.Today == _lastKnownDay) return;
++            _lastKnownDay = DateTime.Today;
++            CurrentDateText = DateTime.Now.ToString("dddd, MMMM d");
++            try { await LoadDataAsync(); }
++            catch (Exception ex) { System.Diagnostics.Debug.WriteLine(ex); }
++        };
++        _dayRolloverTimer.Start();
++    }
++
++    private static async void RunSafe(Func<Task> action)
++    {
++        try { await action(); }
++        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[MainViewModel] Background operation failed: {ex}"); }
++    }
+ 
+     public MainViewModel(IPlannerDataService dataService, ISettingsService settingsService)
+     {
+@@ -276,6 +330,7 @@ public partial class MainViewModel : ObservableObject
+ 
+     public async Task InitializeAsync()
+     {
++        StartDayRolloverTimer();
+         var settings = await _settingsService.LoadSettingsAsync();
+         ProfileName = settings.ProfileName;
+         ProfilePlan = settings.ProfilePlan;
+@@ -373,8 +428,9 @@ public partial class MainViewModel : ObservableObject
+         // 1. Populate Live Today's Horizon from timed tasks
+         HorizonEvents.Clear();
+         var todayTimedTasks = _currentPackage.Tasks
+-            .Where(t => !t.IsCompleted && (t.Section is "Morning" or "Afternoon" or "Evening" || (t.DueDate.HasValue && t.DueDate.Value.Date == DateTime.Today)))
++            .Where(t => !t.IsCompleted && (IsInTodayList(t) || (t.DueDate.HasValue && t.DueDate.Value.Date == DateTime.Today)))
+             .Where(t => !string.IsNullOrWhiteSpace(t.DueTimeText))
++            .OrderBy(t => TimeSortKey(t.DueTimeText))
+             .ToList();
+ 
+         foreach (var t in todayTimedTasks)
+@@ -402,10 +458,7 @@ public partial class MainViewModel : ObservableObject
+         for (int i = 0; i < 7; i++)
+         {
+             DateTime currentDay = startOfWeek.AddDays(i);
+-            int count = _currentPackage.Tasks.Count(t =>
+-                (t.DueDate.HasValue && t.DueDate.Value.Date == currentDay) ||
+-                (t.CompletedAt.HasValue && t.CompletedAt.Value.Date == currentDay) ||
+-                (currentDay == today && t.Section is "Morning" or "Afternoon" or "Evening"));
++            int count = _currentPackage.Tasks.Count(t => EffectiveDay(t, today) == currentDay);
+ 
+             weeklyTotal += count;
+             double barHeight = Math.Min(64, Math.Max(4, count * 7.0));
+@@ -475,7 +528,7 @@ public partial class MainViewModel : ObservableObject
+         // 1. Navigation Category filter
+         if (IsTodayView)
+         {
+-            sourceTasks = sourceTasks.Where(t => t.Section is "Morning" or "Afternoon" or "Evening");
++            sourceTasks = sourceTasks.Where(IsInTodayList);
+         }
+         else if (IsInboxView)
+         {
+@@ -544,7 +597,7 @@ public partial class MainViewModel : ObservableObject
+         var filteredList = sourceTasks.ToList();
+ 
+         // Calculate Today statistics
+-        var todayAll = _currentPackage.Tasks.Where(t => t.Section is "Morning" or "Afternoon" or "Evening").ToList();
++        var todayAll = _currentPackage.Tasks.Where(IsInTodayList).ToList();
+         TotalTasksCount = todayAll.Count;
+         CompletedTasksCount = todayAll.Count(t => t.IsCompleted);
+         CompletionPercentage = TotalTasksCount > 0 ? (double)CompletedTasksCount / TotalTasksCount * 100.0 : 0.0;
+@@ -687,7 +740,17 @@ public partial class MainViewModel : ObservableObject
+     {
+         if (string.IsNullOrWhiteSpace(NewTaskTitle)) return;
+ 
+-        string section = IsTodayView ? "Morning" : (IsInboxView ? "Inbox" : (IsUpcomingView ? "Upcoming" : SelectedNavCategory));
++        // "Project" and "Logbook" are views, not sections: map them to a real section.
++        string section = SelectedNavCategory switch
++        {
++            "Today" => "Morning",
++            "Inbox" => "Inbox",
++            "Upcoming" => "Upcoming",
++            "Anytime" => "Anytime",
++            "Someday" => "Someday",
++            "Project" => "Anytime",
++            _ => "Inbox"
++        };
+         string? projId = IsProjectView ? SelectedProjectId : null;
+         string? tag = TagFilter != "All" ? TagFilter : null;
+ 
+@@ -776,8 +839,9 @@ public partial class MainViewModel : ObservableObject
+         TaskDraftDueDate = IsTodayView ? DateTimeOffset.Now : null;
+         TaskDraftDueTimeText = string.Empty;
+         TaskDraftDuration = string.Empty;
+-        TaskDraftTag = TagFilter != "All" ? TagFilter : (AvailableTags.Count > 0 ? AvailableTags[0].Name : "#Work");
+-        TaskDraftTagColor = AvailableTags.Count > 0 ? AvailableTags[0].ColorHex : "#005FB8";
++        // Tags come only from the chip list (DraftTaskTags); no hidden default tag.
++        TaskDraftTag = string.Empty;
++        TaskDraftTagColor = "#005FB8";
+         TaskDraftNotes = string.Empty;
+         TaskDraftProjectId = IsProjectView && !string.IsNullOrEmpty(SelectedProjectId) ? SelectedProjectId : string.Empty;
+         TaskDraftProjectName = IsProjectView ? SelectedProjectName : string.Empty;
+@@ -831,8 +895,8 @@ public partial class MainViewModel : ObservableObject
+             TaskDraftProjectName = string.Empty;
+         }
+ 
+-        string? primaryTag = DraftTaskTags.Count > 0 ? DraftTaskTags[0].Name : (!string.IsNullOrWhiteSpace(TaskDraftTag) ? TaskDraftTag.Trim() : null);
+-        string primaryTagColor = DraftTaskTags.Count > 0 ? DraftTaskTags[0].ColorHex : TaskDraftTagColor;
++        string? primaryTag = DraftTaskTags.Count > 0 ? DraftTaskTags[0].Name : null;
++        string primaryTagColor = DraftTaskTags.Count > 0 ? DraftTaskTags[0].ColorHex : "#005FB8";
+ 
+         await _dataService.AddTaskWithDetailsAsync(
+             TaskDraftTitle.Trim(),
+@@ -928,8 +992,9 @@ public partial class MainViewModel : ObservableObject
+             EditTaskProjectName = string.Empty;
+         }
+ 
+-        string? primaryTag = EditTaskTags.Count > 0 ? EditTaskTags[0].Name : (!string.IsNullOrWhiteSpace(EditTaskTag) ? EditTaskTag.Trim() : null);
+-        string primaryTagColor = EditTaskTags.Count > 0 ? EditTaskTags[0].ColorHex : EditTaskTagColor;
++        // Removing the last chip must really remove the tag, so never fall back to the old EditTaskTag.
++        string? primaryTag = EditTaskTags.Count > 0 ? EditTaskTags[0].Name : null;
++        string primaryTagColor = EditTaskTags.Count > 0 ? EditTaskTags[0].ColorHex : "#005FB8";
+ 
+         await _dataService.UpdateTaskAsync(
+             EditTaskId,
+@@ -1009,7 +1074,8 @@ public partial class MainViewModel : ObservableObject
+     {
+         if (tag == null || string.IsNullOrWhiteSpace(colorHex)) return;
+         tag.ColorHex = colorHex;
+-        _ = _dataService.AddOrUpdateTagAsync(tag.Name, colorHex);
++        string name = tag.Name;
++        RunSafe(() => _dataService.AddOrUpdateTagAsync(name, colorHex));
+     }
+ 
+     [RelayCommand]
+@@ -1062,7 +1128,8 @@ public partial class MainViewModel : ObservableObject
+     {
+         if (tag == null || string.IsNullOrWhiteSpace(colorHex)) return;
+         tag.ColorHex = colorHex;
+-        _ = _dataService.AddOrUpdateTagAsync(tag.Name, colorHex);
++        string name = tag.Name;
++        RunSafe(() => _dataService.AddOrUpdateTagAsync(name, colorHex));
+     }
+ 
+     [RelayCommand]
+@@ -1097,12 +1164,13 @@ public partial class MainViewModel : ObservableObject
+         await _dataService.DeleteProjectAsync(project.Id);
+         if (SelectedNavCategory == "Project" && SelectedProjectId == project.Id)
+         {
+-            SelectNav("Inbox");
+-        }
+-        else
+-        {
+-            await LoadDataAsync();
++            SelectedNavCategory = "Inbox";
++            SelectedProjectId = null;
++            SelectedProjectName = string.Empty;
+         }
++
++        // Always reload so the sidebar drops the deleted project (LoadDataAsync also refreshes the filters).
++        await LoadDataAsync();
+     }
+ 
+     public async Task ToggleSubTaskAsync(string taskId, string subTaskId)
