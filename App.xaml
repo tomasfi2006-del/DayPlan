@@ -12,6 +12,7 @@
             </ResourceDictionary.MergedDictionaries>
 
             <ResourceDictionary.ThemeDictionaries>
+                <!-- Light Theme (Premium) -->
                 <ResourceDictionary x:Key="Light">
                     <SolidColorBrush x:Key="AppCanvasBackgroundBrush" Color="#F1F3F6" />
                     <SolidColorBrush x:Key="AppCardBackgroundBrush" Color="#FFFFFF" />
@@ -30,6 +31,7 @@
                     <SolidColorBrush x:Key="AppCardShadowBrush" Color="#15000000" />
                     <SolidColorBrush x:Key="AppTagShadowBrush" Color="#28000000" />
                 </ResourceDictionary>
+                <!-- Default Theme (Premium) -->
                 <ResourceDictionary x:Key="Default">
                     <SolidColorBrush x:Key="AppCanvasBackgroundBrush" Color="#F1F3F6" />
                     <SolidColorBrush x:Key="AppCardBackgroundBrush" Color="#FFFFFF" />
@@ -48,6 +50,7 @@
                     <SolidColorBrush x:Key="AppCardShadowBrush" Color="#15000000" />
                     <SolidColorBrush x:Key="AppTagShadowBrush" Color="#28000000" />
                 </ResourceDictionary>
+                <!-- Dark Theme (Premium) -->
                 <ResourceDictionary x:Key="Dark">
                     <SolidColorBrush x:Key="AppCanvasBackgroundBrush" Color="#11141D" />
                     <SolidColorBrush x:Key="AppCardBackgroundBrush" Color="#1C2230" />
@@ -65,6 +68,44 @@
                     <SolidColorBrush x:Key="AppItemBorderBrush" Color="#232B3E" />
                     <SolidColorBrush x:Key="AppCardShadowBrush" Color="#35000000" />
                     <SolidColorBrush x:Key="AppTagShadowBrush" Color="#4A000000" />
+                </ResourceDictionary>
+                <!-- Flat Mode Light -->
+                <ResourceDictionary x:Key="FlatLight">
+                    <SolidColorBrush x:Key="AppCanvasBackgroundBrush" Color="#FAFAFA" />
+                    <SolidColorBrush x:Key="AppCardBackgroundBrush" Color="#FFFFFF" />
+                    <SolidColorBrush x:Key="AppCardBorderBrush" Color="#D1D5DB" />
+                    <SolidColorBrush x:Key="AppTextPrimaryBrush" Color="#111827" />
+                    <SolidColorBrush x:Key="AppTextSecondaryBrush" Color="#6B7280" />
+                    <SolidColorBrush x:Key="AppPrimaryAccentBrush" Color="#0066CC" />
+                    <SolidColorBrush x:Key="AppPrimaryAccentHoverBrush" Color="#0052A3" />
+                    <SolidColorBrush x:Key="AppPrimaryAccentSubtleBrush" Color="#E6F0FF" />
+                    <SolidColorBrush x:Key="AppSidebarBackgroundBrush" Color="#F3F4F6" />
+                    <SolidColorBrush x:Key="AppPositiveBadgeBackgroundBrush" Color="#D1FAE5" />
+                    <SolidColorBrush x:Key="AppPositiveBadgeForegroundBrush" Color="#065F46" />
+                    <SolidColorBrush x:Key="AppSubtleHoverBrush" Color="#F3F4F6" />
+                    <SolidColorBrush x:Key="AppSubtleBarBrush" Color="#E5E7EB" />
+                    <SolidColorBrush x:Key="AppItemBorderBrush" Color="#E5E7EB" />
+                    <SolidColorBrush x:Key="AppCardShadowBrush" Color="#00000000" />
+                    <SolidColorBrush x:Key="AppTagShadowBrush" Color="#00000000" />
+                </ResourceDictionary>
+                <!-- Flat Mode Dark -->
+                <ResourceDictionary x:Key="FlatDark">
+                    <SolidColorBrush x:Key="AppCanvasBackgroundBrush" Color="#0F0F0F" />
+                    <SolidColorBrush x:Key="AppCardBackgroundBrush" Color="#1A1A1A" />
+                    <SolidColorBrush x:Key="AppCardBorderBrush" Color="#404040" />
+                    <SolidColorBrush x:Key="AppTextPrimaryBrush" Color="#F5F5F5" />
+                    <SolidColorBrush x:Key="AppTextSecondaryBrush" Color="#BDBDBD" />
+                    <SolidColorBrush x:Key="AppPrimaryAccentBrush" Color="#66B2FF" />
+                    <SolidColorBrush x:Key="AppPrimaryAccentHoverBrush" Color="#80BFFF" />
+                    <SolidColorBrush x:Key="AppPrimaryAccentSubtleBrush" Color="#1A3A4D" />
+                    <SolidColorBrush x:Key="AppSidebarBackgroundBrush" Color="#1A1A1A" />
+                    <SolidColorBrush x:Key="AppPositiveBadgeBackgroundBrush" Color="#0D5E37" />
+                    <SolidColorBrush x:Key="AppPositiveBadgeForegroundBrush" Color="#6EE7B7" />
+                    <SolidColorBrush x:Key="AppSubtleHoverBrush" Color="#262626" />
+                    <SolidColorBrush x:Key="AppSubtleBarBrush" Color="#333333" />
+                    <SolidColorBrush x:Key="AppItemBorderBrush" Color="#333333" />
+                    <SolidColorBrush x:Key="AppCardShadowBrush" Color="#00000000" />
+                    <SolidColorBrush x:Key="AppTagShadowBrush" Color="#00000000" />
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
 
